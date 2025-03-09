@@ -6,56 +6,44 @@ import { Colors } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 import Google from '@/assets/images/google-logo.svg';
 import Animated, { FadeIn, FadeInDown, FadeInRight } from "react-native-reanimated";
-
+import SocialLoginButtons from "@/components/SocialLoginButtons";
 type Props = {};
 
 const WelcomeScreen = (props: Props) => {
   return (
     <>
-    <Stack.Screen options={{headerShown: false}}/>
-    <ImageBackground source={require('@/assets/images/cover.jpeg')} style={{flex: 1}} resizeMode="cover">
-    <View style={styles.container}>
-      <LinearGradient colors={['transparent','rgba(249, 212, 210, 0.25)', 'rgba(193, 110, 104, 0.36)']} style={styles.background}>
-        <View style={styles.wrapper}>
-          <Animated.Text style={styles.title} entering={FadeInRight.delay(300).duration(300).springify()}>Littel Luxuries, Big Smile </Animated.Text>
+      <Stack.Screen options={{ headerShown: false }} />
+      <ImageBackground
+        source={require('@/assets/images/coverr.png')}
+        style={{ flex: 1 }}
+        resizeMode="cover"
+      >
+        <View style={styles.container}>
+          < LinearGradient
+            colors={['transparent', 'rgba(217, 189, 173, 0.25)', 'rgba(217, 189, 173, 0.34)']}
+            style={styles.background}
+          >
+            <View style={styles.wrapper}>
+              <View style={styles.topButtonWrapper}>
+                <Link href={"/signin"} asChild>
+                  <TouchableOpacity style={styles.topButton}>
+                    <Text style={styles.topButtonText}>SignIn</Text>
+                  </TouchableOpacity>
+                </Link>
 
-      <View style={styles.socialloginWrapper}> 
-        <Animated.View entering={FadeInDown.delay(300).duration(500)}>
-      <Link href={"/signup"} asChild>
-        <TouchableOpacity style={styles.button}>
-          <Ionicons name='mail-outline' size={20} color={Colors.black}/>
-          <Text style={styles.btnTxt}>Continue With Email</Text>
-        </TouchableOpacity>
-      </Link> 
-      </Animated.View>
+                <Link href={"/signup"} asChild>
+                  <TouchableOpacity style={styles.registerButton}>
+                    <Text style={styles.registerButtonText}>Register</Text>
+                  </TouchableOpacity>
+                </Link>
+              </View>
 
-      <Animated.View entering={FadeInDown.delay(700).duration(500)}>
-        <TouchableOpacity style={styles.button}>
-        <Google width={20} height={20} />
-        <Text style={styles.btnTxt}>Continue With Google</Text>
-        </TouchableOpacity>
-      </Animated.View>
 
-      <Animated.View entering={FadeInDown.delay(1100).duration(500)}>
-        <TouchableOpacity style={styles.button}>
-          <Ionicons name='logo-apple' size={20} color={Colors.black}/>
-          <Text style={styles.btnTxt}>Continue With Apple</Text>
-        </TouchableOpacity>
-      </Animated.View>
 
-      </View>
-     <Text style={styles.loginTxt}> Already have an account? {" "} 
-      <Link href={"/signin"} asChild>
-        <TouchableOpacity>
-          <Text style={styles.loginTxtSpan}>  SignIn </Text>
-        </TouchableOpacity>
-      </Link>
-      </Text>
-      </View>
-
-      </LinearGradient>
-    </View>
-    </ImageBackground>
+            </View>
+          </LinearGradient>
+        </View>
+      </ImageBackground>
     </>
   );
 };
@@ -68,7 +56,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  background:{
+  background: {
     flex: 1,
     position: 'absolute',
     top: 0,
@@ -78,47 +66,78 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   wrapper: {
-    paddingBottom: 90,
-    paddingHorizontal: 20, 
+    paddingBottom: 50,
+    paddingHorizontal: 20,
     alignItems: 'center',
   },
-  title:{
+  title: {
     fontSize: 12,
     color: Colors.gray,
     fontWeight: '500',
     letterSpacing: 1.4,
     marginBottom: 18,
-    
   },
-  socialloginWrapper:{
-    alignSelf: 'stretch',
 
-  },
-  button: {
-    flexDirection:'row',
-    padding: 10,
-    borderColor: Colors.gray,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 25,
-    alignItems: 'center',
-    justifyContent:'center',
-    gap: 5,
-    marginBottom: 15,
-  },
-  btnTxt: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.black ,
-  },
   loginTxt: {
-    marginTop: 30,
+    marginTop: 20,
+    marginBottom: -20,
     fontSize: 14,
     color: Colors.black,
     lineHeight: 24,
   },
-  loginTxtSpan:{
+  loginTxtSpan: {
     color: Colors.gray,
     fontWeight: '600',
     marginBottom: -4,
   },
+
+  // Style for the button wrapper to make them appear next to each other
+  topButtonWrapper: {
+    flexDirection: 'row', // Arrange buttons horizontally
+    justifyContent: 'space-between', // Space between buttons
+    width: '100%', // Ensure the buttons stretch across the available space
+    marginBottom: 70, // Space below the buttons
+  },
+
+  topButton: {
+    flex: 1, // Make buttons take equal width
+    borderTopLeftRadius:30,
+    borderBottomLeftRadius:30,
+    borderTopRightRadius:0,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 0, // Space between buttons
+    paddingVertical: 20, // Add padding for button height
+  },
+
+  topButtonText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: Colors.white,
+    textAlign: 'center', // Center text inside button
+  },
+
+  // Register button styling with beige color
+  registerButton: {
+    flex: 1,
+    borderTopLeftRadius:0,
+    borderTopRightRadius:30,
+    borderBottomRightRadius:30,
+    backgroundColor: '#D9BDAD', // Beige color
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 0,
+    paddingVertical: 20,
+  },
+
+  registerButtonText: {
+    
+    fontSize: 20,
+    fontWeight: '600',
+    color: Colors.black, // Text color for beige button
+    textAlign: 'center', 
+  },
+  
+  
 });

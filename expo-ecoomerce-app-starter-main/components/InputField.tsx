@@ -17,7 +17,7 @@ export default InputField
 
 const styles = StyleSheet.create({
   inputField: {
-    backgroundColor: '#FFE4E1', // خلفية وردية فاتحة للصندوق
+    backgroundColor: Colors.beige, 
     paddingVertical: 12,
     paddingHorizontal: 18,
     alignSelf: 'stretch',

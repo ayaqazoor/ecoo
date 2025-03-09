@@ -1,41 +1,75 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Tabs } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
+import { View } from 'react-native';
+import { Colors } from '@/constants/Colors'
 
 export default function TabLayout() {
   return (
-    <Tabs screenOptions={{headerShown: false}}>
-      <Tabs.Screen name='index' options={{
-        title: 'Home',
-        tabBarIcon: ({color}) => (
-          <Ionicons name='home-outline' size={22} color={color} />
-        )
-      }} />
-      <Tabs.Screen name='explore' options={{
-        title: 'Explore',
-        tabBarIcon: ({color}) => (
-          <Ionicons name='search-outline' size={22} color={color} />
-        )
-      }} />
-      <Tabs.Screen name='notifications' options={{
-        title: 'Notification',
-        tabBarIcon: ({color}) => (
-          <Ionicons name='notifications-outline' size={22} color={color} />
-        )
-      }} />
-      <Tabs.Screen name='cart' options={{
-        title: 'Cart',
-        tabBarBadge: 3,
-        tabBarIcon: ({color}) => (
-          <Ionicons name='cart-outline' size={22} color={color} />
-        )
-      }} />
-      <Tabs.Screen name='profile' options={{
-        title: 'Profile',
-        tabBarIcon: ({color}) => (
-          <Ionicons name='person-outline' size={22} color={color} />
-        )
-      }} />
+    <Tabs
+      screenOptions={({ route }) => {
+        if (!route?.name) {
+          console.error("route.name is undefined:", route);
+          return {}; // تجنب تعطل التطبيق
+        }
+
+        const iconName = useMemo(() => {
+          const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
+            index: "home-outline",
+            explore: "search-outline",
+            notifications: "notifications-outline",
+            cart: "cart-outline",
+            profile: "person-outline",
+          };
+          return icons[route.name] || "help-circle-outline";
+        }, [route.name]);
+
+        return {
+          headerShown: false,
+          tabBarActiveTintColor: "#8B5E3C",
+          tabBarInactiveTintColor: "#8E8E8E",
+          tabBarStyle: {
+            backgroundColor: "#FFFFFF",
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            borderTopWidth: 0,
+            shadowColor: "#000",
+            shadowOpacity: 0.05,
+            shadowRadius: 10,
+            elevation: 5,
+            height: 60,
+            position: "absolute",
+            left: 10,
+            right: 10,
+            bottom: 3,
+            paddingBottom: 10,
+          },
+          tabBarLabelStyle: {
+            fontSize: 12,
+            fontWeight: "600",
+          },
+          tabBarIcon: ({ color, focused }) => (
+            <View style={{ alignItems: 'center' }}>
+              {focused && (
+                <View style={{
+                  width: 40,
+                  height: 3,
+                  backgroundColor: "#8B5E3C",
+                  borderRadius: 2,
+                  marginBottom: 4,
+                }} />
+              )}
+              <Ionicons name={iconName} size={23} color={color} />
+            </View>
+          ),
+        };
+      }}
+    >
+      <Tabs.Screen name="index" options={{ title: "Home" }} />
+      <Tabs.Screen name="explore" options={{ title: "Explore" }} />
+      <Tabs.Screen name="notifications" options={{ title: "Notifications" }} />
+      <Tabs.Screen name="cart" options={{ title: "Cart", tabBarBadge: 3 }} />
+      <Tabs.Screen name="profile" options={{ title: "Profile" }} />
     </Tabs>
   );
 }

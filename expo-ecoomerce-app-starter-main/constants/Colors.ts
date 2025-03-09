@@ -1,5 +1,5 @@
 export const Colors = {
-  primary: '#6F4E37',
+  primary: '#5E4033',
   black: '#333',
   gray: '#666',
   lightGray: '#999',
@@ -7,4 +7,5 @@ export const Colors = {
   background: '#F4F4F4',
   highlight: '#F4CE14',
   pink: '#FFB6C1' ,
+  beige: '#F6E7DF' , 
 }
