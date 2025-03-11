@@ -4,18 +4,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { Link, router, Stack } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import InputField from '@/components/InputField';
-import SocialLoginButtons from '@/components/SocialLoginButtons';
+import OAuth from '@/components/OAuth';
 
 const SignUpScreen = () => {
   const [rememberMe, setRememberMe] = useState(false);
 
   return (
     <>
-      <Stack.Screen
-       options={{
-          headerTitle:'',
-        }} 
-      />
+      <Stack.Screen options={{ headerTitle: '' }} />
       <View style={styles.container}>
         {/* زر الإغلاق */}
         <TouchableOpacity style={styles.closeBtn} onPress={() => router.back()}>
@@ -25,58 +21,47 @@ const SignUpScreen = () => {
         {/* عنوان الصفحة */}
         <Text style={styles.title}>Create your Account</Text>
 
-        {/* حقول الإدخال */}
+        {/* حقول الإدخال مع الأيقونات */}
         <InputField 
           placeholder="Enter your email" 
           placeholderTextColor={Colors.gray}
           autoCapitalize="none"
           keyboardType="email-address"
+          icon="mail-outline" // أيقونة البريد
         />
         <InputField 
           placeholder="Password" 
           placeholderTextColor={Colors.gray}
           secureTextEntry={true}
+          icon="lock-closed-outline" // أيقونة القفل
         />
         <InputField 
           placeholder="Confirm Password" 
           placeholderTextColor={Colors.gray}
           secureTextEntry={true}
+          icon="lock-closed-outline" // أيقونة القفل
         />
 
         {/* Remember Me */}
-        <TouchableOpacity 
-          style={styles.rememberMeContainer} 
-          onPress={() => setRememberMe(!rememberMe)}
-        >
-          <Ionicons 
-            name={rememberMe ? "checkbox-outline" : "square-outline"} 
-            size={20} 
-            color={Colors.primary} 
-          />
+        <TouchableOpacity style={styles.rememberMeContainer} onPress={() => setRememberMe(!rememberMe)}>
+          <Ionicons name={rememberMe ? "checkbox-outline" : "square-outline"} size={20} color={Colors.primary} />
           <Text style={styles.rememberMeText}> Remember me</Text>
         </TouchableOpacity>
 
-        {/* زر التسجيل مع التنقل لصفحة تسجيل الدخول */}
-        <TouchableOpacity 
-          style={styles.btn} 
-          onPress={() => router.push("/signin")} 
-        > 
+        {/* زر التسجيل */}
+        <TouchableOpacity style={styles.btn} onPress={() => router.push("/signin")}>
           <Text style={styles.btnTxt}>Register</Text>
         </TouchableOpacity>
 
-  <View style={styles.divider}/>
-
-        {/* رابط الانتقال إلى تسجيل الدخول */}
-        <Text style={styles.loginTxt}> Already have an account? {" "} 
+        {/* رابط تسجيل الدخول */}
+        <OAuth />
+        <Text style={styles.loginTxt}> Already have an account?{" "} 
           <Link href="/signin" asChild>
             <TouchableOpacity>
               <Text style={styles.loginTxtSpan}>Login </Text>
             </TouchableOpacity>
           </Link>
         </Text>
-
-        {/* أزرار تسجيل الدخول عبر مواقع التواصل */}
-        <SocialLoginButtons emailHref={'/signup'}/>
       </View>
     </>
   );
@@ -94,7 +79,7 @@ const styles = StyleSheet.create({
   },
   closeBtn: {
     position: 'absolute',
-    top: 40,
+    top: 0,
     left: 20,
   },
   title: {
@@ -104,22 +89,24 @@ const styles = StyleSheet.create({
     marginBottom: 30,  
   },
   btn: { 
-    backgroundColor: "#5E4033",
+    backgroundColor: Colors.primary,
     paddingVertical: 14,
+    paddingHorizontal: 18,
     alignSelf: 'stretch',
     alignItems: 'center',
     borderRadius: 25,
     marginBottom: 20,
   },
   btnTxt: {
-    color: "#FFFFFF",
+    color: Colors.white,
     fontSize: 16,
     fontWeight: '600',
   },
   loginTxt: {
     fontSize: 14,
     color: "#333",
-    marginBottom: 20,
+    marginTop: 30, // إبعاد النص عن الزر
+    marginBottom: 5,
   },
   loginTxtSpan: {
     color: "#8B5E3C",
@@ -140,7 +127,7 @@ const styles = StyleSheet.create({
   divider:{
     borderTopColor: Colors.gray,
     borderTopWidth: StyleSheet.hairlineWidth,
-    width: '30%',
+    width: '60%',
     marginBottom: 30,
   },
 });

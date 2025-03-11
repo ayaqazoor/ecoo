@@ -1,4 +1,4 @@
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, Text } from 'react-native';
 import React from 'react';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Href, Link } from 'expo-router';
@@ -8,35 +8,25 @@ import { Colors } from "@/constants/Colors";
 
 type Props = {
     emailHref: Href;
+    onGooglePress?: () => void;
+    googleTitle?: string; // جعل العنوان اختياريًا
 };
 
-const SocialLoginButtons = (props: Props) => {
-    const {emailHref} = props;
+const SocialLoginButtons = ({ emailHref, onGooglePress, googleTitle = "Log In With Google" }: Props) => {
     return (
         <View style={styles.socialloginWrapper}> 
 
-            {/* Email Button */}
-            <Animated.View entering={FadeInDown.delay(300).duration(500)}>
-                <Link href={emailHref} asChild>
-                    <TouchableOpacity style={styles.button}>
-                        <Ionicons name='mail-outline' size={24} color={Colors.black} />
-                    </TouchableOpacity>
-                </Link>
-            </Animated.View>
+           
 
-            {/* Google Button */}
+            {/* زر تسجيل الدخول بـ Google */}
             <Animated.View entering={FadeInDown.delay(700).duration(500)}>
-                <TouchableOpacity style={styles.button}>
+                <TouchableOpacity style={styles.googleButton} onPress={onGooglePress}>
                     <Google width={24} height={24} />
+                    <Text style={styles.googleText}>{googleTitle}</Text>
                 </TouchableOpacity>
             </Animated.View>
 
-            {/* Apple Button */}
-            <Animated.View entering={FadeInDown.delay(1100).duration(500)}>
-                <TouchableOpacity style={styles.button}>
-                    <Ionicons name='logo-apple' size={24} color={Colors.black} />
-                </TouchableOpacity>
-            </Animated.View>
+           
 
         </View>
     );
@@ -46,20 +36,26 @@ export default SocialLoginButtons;
 
 const styles = StyleSheet.create({
     socialloginWrapper: {
-        flexDirection: 'row', // Position buttons in a row
-        justifyContent: 'center', // Center buttons horizontally
-        alignItems: 'center', // Center buttons vertically
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
-    button: {
-        width: 50, // Fixed width for circular button
-        height: 50, // Fixed height for circular button
-        borderRadius: 50, // Make button circular
-        justifyContent: 'center', // Center the icon
-        alignItems: 'center', // Center the icon
-        backgroundColor: '#F6E7DF', // Button background color
-        marginHorizontal: 10, // Space between buttons
-        marginVertical:30,
+    googleButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F6E7DF',
+        paddingVertical: 11, // زيادة الارتفاع
+        paddingHorizontal: 70, // زيادة التباعد الجانبي
+        borderRadius: 40, // جعل الحواف أكثر استدارة
+        borderWidth: 0.5, // جعل الحد أوضح
         borderColor: Colors.primary,
-        borderWidth: StyleSheet.hairlineWidth, // Optional: Add border if needed
+        alignSelf: 'stretch',
+        justifyContent: 'center', // ضمان أن المحتوى في المنتصف
+    },
+    googleText: {
+        marginLeft: 12, // زيادة التباعد بين الأيقونة والنص
+        fontSize: 16, // جعل الخط أكبر
+        color: Colors.black,
+        fontWeight: '600', // جعل الخط أكثر سماكة
     },
 });
