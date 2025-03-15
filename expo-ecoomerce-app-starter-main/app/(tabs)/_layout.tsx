@@ -3,6 +3,8 @@ import { Tabs } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
 import { View } from 'react-native';
 import { Colors } from '@/constants/Colors'
+import { useFonts } from 'expo-font';
+
 
 export default function TabLayout() {
   return (
@@ -29,7 +31,7 @@ export default function TabLayout() {
           tabBarActiveTintColor: "#8B5E3C",
           tabBarInactiveTintColor: "#8E8E8E",
           tabBarStyle: {
-            backgroundColor: "#FFFFFF",
+            backgroundColor: Colors.lightbeige,
             borderTopLeftRadius: 20,
             borderTopRightRadius: 20,
             borderTopWidth: 0,

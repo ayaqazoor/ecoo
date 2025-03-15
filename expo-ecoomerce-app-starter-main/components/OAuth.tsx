@@ -1,34 +1,16 @@
 import { View, Text, StyleSheet } from "react-native";
-import SocialLoginButtons from "./SocialLoginButtons";
-
-// دالة تسجيل الدخول عبر Google (يجب استبدالها بوظيفتك الفعلية)
-const signInWithGoogle = async () => {
-    try {
-        console.log("Logging in with Google...");
-        // ضع هنا كود تسجيل الدخول عبر Google
-    } catch (error) {
-        console.error("Google login error:", error);
-    }
-};
-
-const OAuth = () => (
-    <View>
-        {/* خط فاصل مع "Or" في المنتصف */}
-        <View style={styles.dividerContainer}>
-            <View style={styles.line} />
-            <Text style={styles.orText}>Or</Text>
-            <View style={styles.line} />
+import SocialLoginButtons from "@/components/SocialLoginButtons";
+import tailwindcss from 'tailwindcss';
+const OAuth =() => (
+        <View className="flex flex-row justify-center items-center mt-4 gap-x-3">
+            <View className="flex-1 h-[1px] bg-general-100"/>
+            <Text className="text-lg"> or </Text>
+            <View className="flex-1 h-[1px] bg-general-100"/>
         </View>
-
-        {/* زر تسجيل الدخول عبر Google */}
-        <SocialLoginButtons 
-            emailHref="/signup"
-            onGooglePress={signInWithGoogle}
-            googleTitle="Continue with Google"
-        />
-    </View>
-);
-
+   
+    
+    
+)
 export default OAuth;
 
 // الأنماط (Styles)

@@ -8,4 +8,5 @@ export const Colors = {
   highlight: '#F4CE14',
   pink: '#FFB6C1' ,
   beige: '#F6E7DF' , 
+  lightbeige: "#ebe6e0",
 }

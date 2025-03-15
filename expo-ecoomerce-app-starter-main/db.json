@@ -1,0 +1,19 @@
+{
+    "products": [
+      {
+        "id": 1,
+        "title": "Luxury Perfume",
+        "price": 49.99,
+        "image": "https://example.com/perfume.jpg",
+        "description": "A premium fragrance with a long-lasting scent."
+      },
+      {
+        "id": 2,
+        "title": "Elegant Watch",
+        "price": 129.99,
+        "image": "https://example.com/watch.jpg",
+        "description": "A stylish watch for every occasion."
+      }
+    ]
+  }
+  
