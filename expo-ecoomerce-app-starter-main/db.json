@@ -1,19 +1,126 @@
 {
-    "products": [
-      {
-        "id": 1,
-        "title": "Luxury Perfume",
-        "price": 49.99,
-        "image": "https://example.com/perfume.jpg",
-        "description": "A premium fragrance with a long-lasting scent."
-      },
-      {
-        "id": 2,
-        "title": "Elegant Watch",
-        "price": 129.99,
-        "image": "https://example.com/watch.jpg",
-        "description": "A stylish watch for every occasion."
-      }
-    ]
-  }
-  
+  "categories": [
+    {
+      "id": 1,
+      "name": "Perfumes",
+      "description": "Luxury and fresh perfumes."
+    },
+    {
+      "id": 2,
+      "name": "Watches",
+      "description": "Stylish watches for every occasion."
+    },
+    {
+      "id": 3,
+      "name": "Bags",
+      "description": "Elegant handbags for daily use."
+    },
+    {
+      "id": 4,
+      "name": "Shoes",
+      "description": "Comfortable and stylish footwear."
+    },
+    {
+      "id": 5,
+      "name": "Skincare",
+      "description": "High-quality skincare products."
+    }
+  ],
+  "products": [
+    {
+      "id": 1,
+      "title": "Luxury Perfume",
+      "price": 49.99,
+      "image": "https://example.com/perfume.jpg",
+      "description": "A premium fragrance with a long-lasting scent.",
+      "categoryId": 1
+    },
+    {
+      "id": 2,
+      "title": "Elegant Watch",
+      "price": 129.99,
+      "image": "https://example.com/watch.jpg",
+      "description": "A stylish watch for every occasion.",
+      "categoryId": 2
+    },
+    {
+      "id": 3,
+      "title": "Luxury Handbag",
+      "price": 199.99,
+      "image": "https://example.com/handbag.jpg",
+      "description": "A high-quality handbag made from premium leather.",
+      "categoryId": 3
+    },
+    {
+      "id": 4,
+      "title": "Sports Sneakers",
+      "price": 89.99,
+      "image": "https://example.com/sneakers.jpg",
+      "description": "Comfortable sneakers for everyday use.",
+      "categoryId": 4
+    },
+    {
+      "id": 5,
+      "title": "Rose Oud Perfume",
+      "price": 79.99,
+      "image": "https://example.com/rose-oud.jpg",
+      "description": "A luxurious perfume with deep floral and oud notes.",
+      "categoryId": 1
+    },
+    {
+      "id": 6,
+      "title": "Vanilla Musk Perfume",
+      "price": 69.99,
+      "image": "https://example.com/vanilla-musk.jpg",
+      "description": "A soft, sweet blend of vanilla and musk.",
+      "categoryId": 1
+    },
+    {
+      "id": 7,
+      "title": "Hydrating Face Cream",
+      "price": 29.99,
+      "image": "https://example.com/face-cream.jpg",
+      "description": "A moisturizing cream that keeps your skin hydrated all day.",
+      "categoryId": 5
+    },
+    {
+      "id": 8,
+      "title": "Vitamin C Serum",
+      "price": 39.99,
+      "image": "https://example.com/vitamin-c-serum.jpg",
+      "description": "A powerful serum that brightens and evens out skin tone.",
+      "categoryId": 5
+    },
+    {
+      "id": 9,
+      "title": "Aloe Vera Gel",
+      "price": 19.99,
+      "image": "https://example.com/aloe-vera-gel.jpg",
+      "description": "A soothing gel for hydration and skin repair.",
+      "categoryId": 5
+    }
+  ],
+  "saleProducts": [
+    {
+      "id": 1,
+      "productId": 5,
+      "discountPrice": 59.99,
+      "originalPrice": 79.99,
+      "saleEnds": "2025-03-22T23:59:59Z"
+    },
+    {
+      "id": 2,
+      "productId": 2,
+      "discountPrice": 99.99,
+      "originalPrice": 129.99,
+      "saleEnds": "2025-03-22T23:59:59Z"
+    },
+    {
+      "id": 3,
+      "productId": 7,
+      "discountPrice": 19.99,
+      "originalPrice": 29.99,
+      "saleEnds": "2025-03-22T23:59:59Z"
+    }
+  ]
+}

@@ -31,18 +31,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: Colors.lightbeige,
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     paddingBottom: 10,
     paddingTop: 15,
     elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    borderRadius: 25,
+    shadowColor: Colors.primary,
+    shadowOpacity: 0.5,
+    shadowRadius: 2,
+    borderTopRightRadius: 0,
+    borderTopLeftRadius: 0,
+    borderBottomLeftRadius: 25,
+    borderBottomRightRadius: 25,
   },
   logo: {
-    width: 100, // ضبط عرض الشعار
+    width: 90, // ضبط عرض الشعار
     height: 50, // ضبط ارتفاع الشعار
     resizeMode: 'contain', // التأكد من أن الصورة لا تُقتطع
   },
