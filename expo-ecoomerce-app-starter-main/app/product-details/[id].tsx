@@ -7,18 +7,21 @@ import ImageSlider from '@/components/ImageSlider';
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from '@/constants/Colors';
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from 'expo-router';
 
 const ProductDetails = () => {
     const { id } = useLocalSearchParams();
     const [product, setProduct] = useState<ProductType | null>(null);
     const [isFavorite, setIsFavorite] = useState(false);
+    const [addedToCart, setAddedToCart] = useState(false);
+    const router = useRouter();
 
     useEffect(() => {
         getProductDetails();
         checkIfFavorite();
     }, []);
 
-    // جلب تفاصيل المنتج
+    // ✅ جلب تفاصيل المنتج
     const getProductDetails = async () => {
         const URL = `http://192.168.129.177:8000/saleProducts/${id}`;
         try {
@@ -29,7 +32,7 @@ const ProductDetails = () => {
         }
     };
 
-    // التحقق مما إذا كان المنتج مضافًا إلى المفضلة
+    // ✅ التحقق مما إذا كان المنتج مضافًا إلى المفضلة
     const checkIfFavorite = async () => {
         try {
             const storedFavorites = await AsyncStorage.getItem("favorites");
@@ -43,17 +46,15 @@ const ProductDetails = () => {
         }
     };
 
-    // إضافة أو إزالة المنتج من المفضلة
+    // ✅ إضافة أو إزالة المنتج من المفضلة
     const toggleFavorite = async () => {
         try {
             const storedFavorites = await AsyncStorage.getItem("favorites");
             let favoritesArray: ProductType[] = storedFavorites ? JSON.parse(storedFavorites) : [];
 
             if (isFavorite) {
-                // إزالة المنتج من المفضلة
                 favoritesArray = favoritesArray.filter(item => item.id !== Number(id));
             } else {
-                // إضافة المنتج إلى المفضلة
                 if (product) {
                     favoritesArray.push(product);
                 }
@@ -63,6 +64,20 @@ const ProductDetails = () => {
             setIsFavorite(!isFavorite);
         } catch (error) {
             console.error("Error toggling favorite:", error);
+        }
+    };
+
+    // ✅ إضافة المنتج إلى السلة والتوجيه إليها
+    const addToCart = async () => {
+        if (!product) return;
+
+        try {
+            const URL = 'http://192.168.129.177:8000/cart';
+            await axios.post(URL, { ...product, quantity: 1 });
+            setAddedToCart(true);
+            router.push('/cart');
+        } catch (error) {
+            console.error('Error adding to cart:', error);
         }
     };
 
@@ -77,7 +92,7 @@ const ProductDetails = () => {
                             <Text style={styles.rating}>4.7</Text>
                         </View>
 
-                        {/* زر المفضلة */}
+                        {/* ✅ زر المفضلة */}
                         <TouchableOpacity onPress={toggleFavorite}>
                             <Ionicons 
                                 name={isFavorite ? "heart" : "heart-outline"} 
@@ -88,7 +103,18 @@ const ProductDetails = () => {
                     </View>
 
                     <Text style={styles.productTitle}>{product.title}</Text>
-                    <Text style={styles.productPrice}>{product.price} $</Text>
+                    <Text style={styles.productPrice}>₪ {product.price}</Text>
+
+                    {/* ✅ زر إضافة إلى السلة */}
+                    <TouchableOpacity 
+                        style={[styles.cartButton, addedToCart && styles.cartButtonAdded]} 
+                        onPress={addToCart}
+                        disabled={addedToCart}
+                    >
+                        <Text style={styles.cartButtonText}>
+                            {addedToCart ? 'Added to Cart' : 'ADD TO CART'}
+                        </Text>
+                    </TouchableOpacity>
                 </View>
             )}
         </View>
@@ -125,5 +151,20 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: "bold",
         color: "green",
+        marginBottom: 20,
+    },
+    cartButton: {
+        backgroundColor: Colors.primary,
+        paddingVertical: 12,
+        borderRadius: 5,
+        alignItems: 'center',
+    },
+    cartButtonAdded: {
+        backgroundColor: 'gray',
+    },
+    cartButtonText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: '600',
     },
 });
