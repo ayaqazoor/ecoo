@@ -2,9 +2,7 @@ import React, { useMemo } from 'react';
 import { Tabs } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
 import { View } from 'react-native';
-import { Colors } from '@/constants/Colors'
-import { useFonts } from 'expo-font';
-
+import { Colors } from '@/constants/Colors';
 
 export default function TabLayout() {
   return (
@@ -19,6 +17,7 @@ export default function TabLayout() {
           const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
             index: "home-outline",
             explore: "search-outline",
+            favorites: "heart-outline", // ✅ إضافة أيقونة المفضلة
             notifications: "notifications-outline",
             cart: "cart-outline",
             profile: "person-outline",
@@ -69,6 +68,7 @@ export default function TabLayout() {
     >
       <Tabs.Screen name="index" options={{ title: "Home" }} />
       <Tabs.Screen name="explore" options={{ title: "Explore" }} />
+      <Tabs.Screen name="favorites" options={{ title: "Favorites" }} /> {/* ✅ إضافة تبويب المفضلة */}
       <Tabs.Screen name="notifications" options={{ title: "Notifications" }} />
       <Tabs.Screen name="cart" options={{ title: "Cart", tabBarBadge: 3 }} />
       <Tabs.Screen name="profile" options={{ title: "Profile" }} />

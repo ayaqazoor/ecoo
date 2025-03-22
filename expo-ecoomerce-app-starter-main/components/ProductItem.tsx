@@ -1,10 +1,11 @@
 import { StyleSheet, Text, View, Image, Dimensions, TouchableOpacity } from 'react-native';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ProductType } from '@/types/type';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Link } from "expo-router";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type Props = {
     item: ProductType;
@@ -14,9 +15,46 @@ type Props = {
 const width = Dimensions.get('window').width - 40;
 
 const ProductItem = ({ item, index }: Props) => {
+    const [isFavorite, setIsFavorite] = useState(false);
+
+    useEffect(() => {
+        checkIfFavorite();
+    }, []);
+
+    const checkIfFavorite = async () => {
+        try {
+            const storedFavorites = await AsyncStorage.getItem("favorites");
+            if (storedFavorites) {
+                const favorites = JSON.parse(storedFavorites);
+                const isFav = favorites.some((fav: ProductType) => fav.id === item.id);
+                setIsFavorite(isFav);
+            }
+        } catch (error) {
+            console.error("Error checking favorites:", error);
+        }
+    };
+
+    const toggleFavorite = async () => {
+        try {
+            const storedFavorites = await AsyncStorage.getItem("favorites");
+            let favorites = storedFavorites ? JSON.parse(storedFavorites) : [];
+
+            if (isFavorite) {
+                favorites = favorites.filter((fav: ProductType) => fav.id !== item.id);
+            } else {
+                favorites.push(item);
+            }
+
+            await AsyncStorage.setItem("favorites", JSON.stringify(favorites));
+            setIsFavorite(!isFavorite);
+        } catch (error) {
+            console.error("Error updating favorites:", error);
+        }
+    };
+
     return (
         <Link 
-            href={{ pathname:"/product-details/[id]", params: { id: item.id.toString() } }} 
+            href={{ pathname: "/product-details/[id]", params: { id: item.id.toString() } }} 
             asChild
         >
             <TouchableOpacity>
@@ -28,9 +66,16 @@ const ProductItem = ({ item, index }: Props) => {
                         source={{ uri: item.images?.[0] || 'https://via.placeholder.com/200' }} 
                         style={styles.productImg} 
                     />
-                    <TouchableOpacity style={styles.bookmarkBtn}>
-                        <Ionicons name='heart-outline' size={22} color={Colors.primary} />
+
+                    {/* ✅ زر المفضلة */}
+                    <TouchableOpacity style={styles.bookmarkBtn} onPress={toggleFavorite}>
+                        <Ionicons 
+                            name={isFavorite ? 'heart' : 'heart-outline'} 
+                            size={22} 
+                            color={isFavorite ? 'red' : Colors.primary} 
+                        />
                     </TouchableOpacity>
+
                     <View style={styles.productInfo}>
                         <Text style={styles.price}>₪ {item.price}</Text>
                         <View style={styles.ratingWrapper}>
