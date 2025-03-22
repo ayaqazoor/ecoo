@@ -9,4 +9,5 @@ export const Colors = {
   pink: '#FFB6C1' ,
   beige: '#F6E7DF' , 
   lightbeige: "#F6EEEB",
+  extraLightGray:'#e4e4e4',
 }
