@@ -23,7 +23,7 @@ const ProductDetails = () => {
 
     // ✅ جلب تفاصيل المنتج
     const getProductDetails = async () => {
-        const URL = `http://192.168.129.177:8000/saleProducts/${id}`;
+        const URL = `http://192.168.160.177:8000/saleProducts/${id}`;
         try {
             const response = await axios.get(URL);
             setProduct(response.data);
@@ -72,7 +72,7 @@ const ProductDetails = () => {
         if (!product) return;
 
         try {
-            const URL = 'http://192.168.129.177:8000/cart';
+            const URL = 'http://192.168.160.177:8000/cart';
             await axios.post(URL, { ...product, quantity: 1 });
             setAddedToCart(true);
             router.push('/cart');

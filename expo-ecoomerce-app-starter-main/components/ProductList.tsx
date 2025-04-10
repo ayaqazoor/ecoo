@@ -25,7 +25,7 @@ const ProductList = ({products, flatlist= true}: Props) => {
   
     const getProducts = async () => {
       try {
-        const URL = 'http://192.168.129.177:8000/products';
+        const URL = 'http://192.168.160.177:8000/products';
         const response = await axios.get(URL);
         console.log('Fetched Products:', response.data);
         setProducts(response.data);

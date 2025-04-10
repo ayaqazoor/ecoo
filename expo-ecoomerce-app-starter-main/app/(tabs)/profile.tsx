@@ -1,174 +1,142 @@
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Switch } from "react-native";
 import React, { useState, useEffect } from "react";
-import {
-  StyleSheet,
-  Text,
-  View,
-  Image,
-  TextInput,
-  FlatList,
-  TouchableOpacity,
-} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { Colors } from "@/constants/Colors";
+import { auth } from "@/config/firebase";
+import { signOut, onAuthStateChanged } from "firebase/auth"; // اضفنا onAuthStateChanged
+import { useRouter } from "expo-router";
 
-// توليد اسم مستخدم عشوائي
-const generateUniqueUsername = () => `user${Date.now()}`;
+type Option = {
+  title: string;
+  icon: keyof typeof Feather.glyphMap;
+};
+
+const options: Option[] = [
+  { title: "Manage Account", icon: "user" },
+  { title: "Notifications", icon: "bell" },
+  { title: "Language", icon: "globe" },
+  { title: "Dark Mode", icon: "moon" },
+  { title: "Logout", icon: "log-out" },
+];
 
 const ProfileScreen = () => {
   const [username, setUsername] = useState("");
-  const [isEditing, setIsEditing] = useState(false);
+  const [photoURL, setPhotoURL] = useState<string | null>(null);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
-    if (!username) {
-      setUsername(generateUniqueUsername());
-    }
-  }, [username]);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setUsername(user.displayName || user.email || "User");
+        setPhotoURL(user.photoURL);
+      }
+    });
 
-  const options = [
-    { id: 1, title: "My Account", icon: "user" as const },
-    { id: 2, title: "App Settings", icon: "settings" as const },
-    { id: 3, title: "Language Preferences", icon: "globe" as const },
-    { id: 4, title: "Help & Support", icon: "help-circle" as const },
-    { id: 5, title: "Logout", icon: "log-out" as const },
-  ];
+    return () => unsubscribe(); // مهم نوقف الاستماع عند الخروج
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      router.replace("/signin");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
+
+  const handleOptionPress = (item: Option) => {
+    if (item.title === "Logout") {
+      handleLogout();
+    } else if (item.title === "Dark Mode") {
+      setIsDarkMode((prev) => !prev);
+    } else if (item.title === "Manage Account") {
+      router.push("/ManageAccountScreen");
+    } else {
+      console.log(`Navigating to ${item.title}`);
+    }
+  };
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerBackground} />
-      <View style={styles.profileSection}>
-        <View style={styles.profileImageContainer}>
-          <Image
-            source={{ uri: "https://via.placeholder.com/100" }}
-            style={styles.profileImage}
-          />
-          <Feather name="user" size={50} color={Colors.primary} style={styles.userIcon} />
-        </View>
-
-        {/* إدخال الاسم */}
-        {isEditing ? (
-          <TextInput
-            style={styles.profileNameInput}
-            value={username}
-            onChangeText={setUsername}
-            onBlur={() => setIsEditing(false)}
-            autoFocus
-          />
-        ) : (
-          <TouchableOpacity
-            style={styles.nameContainer}
-            onPress={() => setIsEditing(true)}
-          >
-            <Text style={styles.profileName}>{username}</Text>
-            <Feather name="edit" size={16} color={Colors.primary} />
-          </TouchableOpacity>
-        )}
+      <View style={styles.header}>
+        <Image
+          source={
+            photoURL
+              ? { uri: photoURL }
+              : require("@/assets/images/accnotf.jpeg")
+          }
+          style={styles.avatar}
+        />
+        <Text style={styles.username}>{username}</Text>
       </View>
 
-      {/* قائمة الخيارات */}
       <FlatList
         data={options}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => item.title}
         renderItem={({ item }) => (
-          <TouchableOpacity style={styles.option} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.option}
+            activeOpacity={0.7}
+            onPress={() => handleOptionPress(item)}
+          >
             <Feather name={item.icon} size={22} color={Colors.primary} style={styles.icon} />
             <Text style={styles.optionText}>{item.title}</Text>
-            <Feather name="chevron-right" size={22} color={Colors.primary} />
+            {item.title === "Dark Mode" ? (
+              <Switch
+                value={isDarkMode}
+                onValueChange={() => setIsDarkMode((prev) => !prev)}
+              />
+            ) : (
+              <Feather name="chevron-right" size={22} color={Colors.primary} />
+            )}
           </TouchableOpacity>
         )}
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={styles.list}
       />
     </View>
   );
 };
 
+export default ProfileScreen;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.background,
+  },
+  header: {
     alignItems: "center",
+    marginTop: 40,
+    marginBottom: 20,
   },
-  headerBackground: {
-    width: "100%",
-    height: 150,
-    backgroundColor: Colors.beige,
-  },
-  profileSection: {
-    alignItems: "center",
-    marginTop: -75,
-  },
-  profileImageContainer: {
+  avatar: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: Colors.white,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    borderColor: Colors.primary,
+    marginBottom: 12,
   },
-  profileImage: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-  },
-  userIcon: {
-    position: "absolute",
-  },
-  profileNameInput: {
-    fontSize: 18,
-    fontWeight: "bold",
+  username: {
+    fontSize: 22,
+    fontWeight: "600",
     color: Colors.primary,
-    marginTop: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.primary,
-    textAlign: "center",
-    paddingVertical: 5,
   },
-  nameContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 15,
-  },
-  profileName: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: Colors.primary,
-    marginRight: 5,
-    marginBottom: 20,
+  list: {
+    paddingHorizontal: 20,
   },
   option: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 18,
+    paddingVertical: 18,
+    borderBottomColor: "#ddd",
     borderBottomWidth: 1,
-    borderBottomColor: Colors.beige,
-    backgroundColor: Colors.white,
-    borderRadius: 12,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    width: "92%", // زيادة العرض
-    alignSelf: "center",
-    marginVertical: 8, // زيادة التباعد بين العناصر
   },
   icon: {
-    marginRight: 18,
+    marginRight: 15,
   },
   optionText: {
-    fontSize: 16, // تكبير الخط
     flex: 1,
-    fontWeight: "500",
+    fontSize: 16,
     color: Colors.primary,
   },
-  listContainer: {
-    paddingBottom: 20,
-    width: "100%",
-    alignItems: "center",
-  },
 });
-
-export default ProfileScreen;

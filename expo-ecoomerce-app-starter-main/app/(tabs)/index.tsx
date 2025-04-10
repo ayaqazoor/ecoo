@@ -29,7 +29,7 @@ const HomeScreen = (props: Props) => {
 
   const getProducts = async () => {
     try {
-      const URL = 'http://192.168.129.177:8000/products';
+      const URL = 'http://192.168.160.177:8000/products';
       const response = await axios.get(URL);
     setProducts(response.data);
     } catch (error) {
@@ -43,7 +43,7 @@ const HomeScreen = (props: Props) => {
 
   const getCategories = async () => {
     try {
-      const URL = 'http://192.168.129.177:8000/categories';
+      const URL = 'http://192.168.160.177:8000/categories';
       const response = await axios.get(URL);
       setCategories(response.data);
     } catch (error) {
@@ -55,7 +55,7 @@ const HomeScreen = (props: Props) => {
 
   const getSaleProducts = async () => {
     try {
-      const URL = 'http://192.168.129.177:8000/saleProducts';
+      const URL = 'http://192.168.160.177:8000/saleProducts';
       const response = await axios.get(URL);
     setSaleProducts(response.data);
     } catch (error) {

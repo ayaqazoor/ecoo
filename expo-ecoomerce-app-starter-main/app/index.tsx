@@ -1,15 +1,17 @@
 import { ImageBackground, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import React from "react";
-import { Link, Stack } from "expo-router";
+import { Link, Stack, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
-import Google from '@/assets/images/google-logo.svg';
 import Animated, { FadeIn, FadeInDown, FadeInRight } from "react-native-reanimated";
 import SocialLoginButtons from "@/components/SocialLoginButtons";
+
 type Props = {};
 
 const WelcomeScreen = (props: Props) => {
+  const router = useRouter(); // <== استوردنا الراوتر هنا
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -19,15 +21,24 @@ const WelcomeScreen = (props: Props) => {
         resizeMode="cover"
       >
         <View style={styles.container}>
-          < LinearGradient
+          <LinearGradient
             colors={['transparent', 'rgba(217, 189, 173, 0.25)', 'rgba(217, 189, 173, 0.34)']}
             style={styles.background}
           >
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => {
+                router.replace("/(tabs)"); // <== لما نكبس إكس، نروح عالتابس
+              }}
+            >
+              <Ionicons name="close" size={30} color={Colors.black} />
+            </TouchableOpacity>
+
             <View style={styles.wrapper}>
               <View style={styles.topButtonWrapper}>
                 <Link href={"/signin"} asChild>
                   <TouchableOpacity style={styles.topButton}>
-                    <Text style={styles.topButtonText}>SignIn</Text>
+                    <Text style={styles.topButtonText}>Sign In</Text>
                   </TouchableOpacity>
                 </Link>
 
@@ -38,7 +49,8 @@ const WelcomeScreen = (props: Props) => {
                 </Link>
               </View>
 
-
+              {/* ممكن تحطي هنا SocialLoginButtons إذا بدك */}
+              {/* <SocialLoginButtons /> */}
 
             </View>
           </LinearGradient>
@@ -70,74 +82,48 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     alignItems: 'center',
   },
-  title: {
-    fontSize: 12,
-    color: Colors.gray,
-    fontWeight: '500',
-    letterSpacing: 1.4,
-    marginBottom: 18,
-  },
-
-  loginTxt: {
-    marginTop: 20,
-    marginBottom: -20,
-    fontSize: 14,
-    color: Colors.black,
-    lineHeight: 24,
-  },
-  loginTxtSpan: {
-    color: Colors.gray,
-    fontWeight: '600',
-    marginBottom: -4,
-  },
-
-  // Style for the button wrapper to make them appear next to each other
   topButtonWrapper: {
-    flexDirection: 'row', // Arrange buttons horizontally
-    justifyContent: 'space-between', // Space between buttons
-    width: '100%', // Ensure the buttons stretch across the available space
-    marginBottom: 70, // Space below the buttons
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 70,
   },
-
   topButton: {
-    flex: 1, // Make buttons take equal width
-    borderTopLeftRadius:30,
-    borderBottomLeftRadius:30,
-    borderTopRightRadius:0,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 0, // Space between buttons
-    paddingVertical: 20, // Add padding for button height
-  },
-
-  topButtonText: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: Colors.white,
-    textAlign: 'center', // Center text inside button
-  },
-
-  // Register button styling with beige color
-  registerButton: {
     flex: 1,
-    borderTopLeftRadius:0,
-    borderTopRightRadius:30,
-    borderBottomRightRadius:30,
-    backgroundColor: '#D9BDAD', // Beige color
+    borderTopLeftRadius: 30,
+    borderBottomLeftRadius: 30,
+    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginHorizontal: 0,
     paddingVertical: 20,
   },
-
-  registerButtonText: {
-    
+  topButtonText: {
     fontSize: 20,
     fontWeight: '600',
-    color: Colors.black, // Text color for beige button
-    textAlign: 'center', 
+    color: Colors.white,
+    textAlign: 'center',
   },
-  
-  
+  registerButton: {
+    flex: 1,
+    borderTopRightRadius: 30,
+    borderBottomRightRadius: 30,
+    backgroundColor: '#D9BDAD',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 0,
+    paddingVertical: 20,
+  },
+  registerButtonText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: Colors.black,
+    textAlign: 'center',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    zIndex: 10,
+  },
 });
