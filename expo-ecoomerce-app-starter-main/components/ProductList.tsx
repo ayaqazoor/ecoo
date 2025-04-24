@@ -25,7 +25,7 @@ const ProductList = ({products, flatlist= true}: Props) => {
   
     const getProducts = async () => {
       try {
-        const URL = 'http://192.168.160.177:8000/products';
+        const URL = 'http://192.168.112.177:8000/products';
         const response = await axios.get(URL);
         console.log('Fetched Products:', response.data);
         setProducts(response.data);
@@ -52,14 +52,14 @@ const ProductList = ({products, flatlist= true}: Props) => {
             contentContainerStyle={{justifyContent: 'space-between' , marginBottom: 20}}
             keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
             renderItem={({index, item }) => (
-              <ProductItem item={item} index={index} />
+              <ProductItem item={item} index={index} productType={'regular'} />
             )}
             /> 
             ): (
               <View style={styles.itemsWrapper}> 
                 {products.map((item, index) => (
                   <View key={index} style={styles.productWrapper}>
-                <ProductItem item={item} index={index} />
+                <ProductItem item={item} index={index} productType={'regular'} />
               </View>
             ))}
           </View>

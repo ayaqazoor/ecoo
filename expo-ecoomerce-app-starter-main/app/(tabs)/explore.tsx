@@ -1,67 +1,74 @@
-import React from "react";
-import { View, Text, FlatList, Image, StyleSheet, TouchableOpacity } from "react-native";
-import Header from "@/components/Header";
+import { FlatList,StyleSheet, Text, View } from 'react-native'
+import React, { useEffect, useState } from 'react'
+import axios from 'axios'
+import { CategoryType } from '@/types/type'
+import { Stack } from 'expo-router'
+import{useHeaderHeight} from "@react-navigation/elements";
+import {Image} from 'react-native';
+import { Colors } from '@/constants/Colors'
+import Animated, { FadeInDown } from 'react-native-reanimated'
+type Props = {};
 
-const categories = [
-  { id: 1, title: "Perfumes", image: require("@/assets/images/Perf.jpeg") },
-  { id: 2, title: "Accessories", image: require("@/assets/images/acc.jpeg") },
-  { id: 3, title: "Skincare", image: require("@/assets/images/skin.jpeg") },
-  
-];
+const ExploreScreen = (props: Props) => {
+  const [categories,setCategories] = useState<CategoryType[]>([]);
+  const headerHeight= useHeaderHeight();
+  useEffect(()=>{
+    getCategories();
+  },[]);
 
-const ExploreScreen = () => {
+  const getCategories = async () => {
+
+      const URL = 'http://192.168.112.177:8000/categories';
+      const response = await axios.get(URL, { timeout: 10000 });
+      
+      console.log(response.data);
+      setCategories(response.data);
+    
+    };
   return (
-    <View style={styles.container}>
-      <View style={styles.headerContainer}>
-        <Header />
-      </View>
-      <FlatList
-        data={categories}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => (
-          <TouchableOpacity style={styles.card}>
-            <View style={styles.textContainer}>
-              <Text style={styles.title}>{item.title}</Text>
-            </View>
-            <Image source={item.image} style={styles.image} />
-          </TouchableOpacity>
-        )}
+    <>
+    <Stack.Screen options={{headerShown:true, headerTransparent:true}}/>
+    <View style={[styles.container, {marginTop:headerHeight}]}>
+     <FlatList
+      data={categories} 
+      keyExtractor={(item)=>item.id.toString()} 
+      showsVerticalScrollIndicator={false}
+      renderItem={({item,index})=>(
+      <Animated.View style={styles.itemWrapper}entering={FadeInDown.delay(300+index*100).duration(500)}>
+        <Text style={styles.itemTitle}>{item.name}</Text>
+        <Image
+         source={{uri:item.image}}
+         style={{width:100,height:100, borderRadius:10}}
+        />
+      </Animated.View>
+      
+      )}
       />
     </View>
+    </>
   );
 };
+
+export default ExploreScreen
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
-    paddingHorizontal: 0, // تأكد من عدم وجود مسافات جانبية
+   paddingHorizontal:20,
   },
-  headerContainer: {
-    width: "100%", 
+  itemWrapper:{
+    flexDirection:"row",
+    alignItems:"center",
+    justifyContent:"space-between",
+    backgroundColor:Colors.extraLightGray,
+    padding:10,
+    borderRadius:10,
+    marginBottom:20,
   },
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f5f5f5",
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
-    justifyContent: "space-between",
-    marginTop: 10 ,
-  },
-  textContainer: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  image: {
-    width: 100,
-    height: 100,
-    borderRadius: 15,
-  },
-});
+  itemTitle:{
+    fontSize:16,
+    fontWeight:'500',
+    color:Colors.black,
+  }
 
-export default ExploreScreen;
+})

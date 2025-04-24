@@ -1,14 +1,31 @@
 {
   "saleProducts": [
     {
-      "id": 29,
-      "title": "Mid-Century Modern Wooden Dining Table",
-      "price": 24,
-      "description": "Elevate your dining room with this sleek Mid-Century Modern dining table, featuring an elegant walnut finish and tapered legs for a timeless aesthetic. Its sturdy wood construction and minimalist design make it a versatile piece that fits with a variety of decor styles. Perfect for intimate dinners or as a stylish spot for your morning coffee.",
+      "id": "29",
+      "title": "Beauty of Johnson sunscreen",
+      "price": 70,
+      "description": "Rich in nourishing rice seed water and soothing panthenol, this sunscreen not only protects the skin but also revitalizes it from exposure to UV rays and heat,Fast-absorbing cream formula.",
       "images": [
-        "https://i.imgur.com/DMQHGA0.jpeg",
-        "https://i.imgur.com/qrs9QBg.jpeg",
-        "https://i.imgur.com/XVp8T1I.jpeg"
+        "https://i.imgur.com/s7OAR6K.jpeg",
+        "https://i.imgur.com/eKbrEsk.jpeg",
+        "https://i.imgur.com/9jAadll.jpeg"
+      ],
+      "category": {
+        "id": 3,
+        "name": "nuevo",
+        "image": "https://i.imgur.com/Qphac99.jpeg"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "30",
+      "title": "COSRX Cleanser",
+      "price": 66,
+      "description": "The COSRX Gentle Daily Salicylic Acid Cleanser is a foaming cleanser designed for oily skin. It contains plant-based purifying ingredients and salicylic acid to care for dead skin cells and excess oil ,It gently removes impurities and excess sebum while fighting acne and blemishes, leaving the skin soft and smooth without feeling dry.",
+      "images": [
+        "https://i.imgur.com/OlVSHAD.jpeg",
+        "https://i.imgur.com/ZFr8hPt.jpeg",
+        "https://i.imgur.com/RHa6Rqe.jpeg"
       ],
       "category": {
         "id": 3,
@@ -17,7 +34,522 @@
       }
     },
     {
-      "id": 30,
+      "id": "31",
+      "title": "Rolex Watche",
+      "price": 25,
+      "description": "Rolex luxury watch that combines Swiss precision and classic design, with a durable body, waterproof, and automatic mechanism. A symbol of elegance and sophistication. Order it now.",
+      "images": [
+        "https://i.imgur.com/WlcBjCX.jpeg",
+        "https://i.imgur.com/RrYVovt.jpeg"
+      ],
+      "category": {
+        "id": 3,
+        "name": "nuevo",
+        "image": "https://i.imgur.com/Qphac99.jpeg"
+      }
+    },
+    {
+      "id": "32",
+      "title": "Yara - Lattafa Perfumes LLC",
+      "price": 67,
+      "description": "Is a Amber Vanilla fragrance for women. Yara was launched in 2020. Top notes are Orchid, Heliotrope and Tangerine; middle notes are Gourmand Accord and Tropical Fruits; base notes are Vanilla, Musk and Sandalwood.",
+      "images": [
+        "https://i.imgur.com/0csad8J.jpeg",
+        "https://i.imgur.com/Kh5UM3t.jpeg",
+        "https://i.imgur.com/3eaL8sX.jpeg"
+      ],
+      "category": {
+        "id": 3,
+        "name": "nuevo",
+        "image": "https://i.imgur.com/Qphac99.jpeg"
+      }
+    },
+    {
+      "id": "33",
+      "title": "Cartier bracelet",
+      "price": 49,
+      "description": "Elegant Cartier-style bracelets made of high-quality stainless steel.",
+      "images": [
+        "https://i.imgur.com/sFb04Lu.jpeg",
+        "https://i.imgur.com/hNJ7rnx.jpeg",
+        "https://i.imgur.com/HQ4DsVG.jpeg"
+      ],
+      "category": {
+        "id": 3,
+        "name": "nuevo",
+        "image": "https://i.imgur.com/Qphac99.jpeg"
+      }
+    },
+    {
+      "id": "34",
+      "title": "LV Handbag",
+      "price": 71,
+      "description": "Elegant and timeless, this Louis Vuitton bag combines luxury and functionality. Crafted from premium materials with the iconic LV monogram, it features a spacious interior, durable handles, and refined detailing — perfect for both everyday use and special occasions.",
+      "images": [
+        "https://i.imgur.com/dg1vSIV.jpeg",
+        "https://i.imgur.com/SDsKhu6.jpeg",
+        "https://i.imgur.com/LHkWgcK.jpeg"
+      ],
+      "category": {
+        "id": 3,
+        "name": "nuevo",
+        "image": "https://i.imgur.com/Qphac99.jpeg"
+      }
+    },
+    {
+      "id": "35",
+      "title": "Faseline body bakege",
+      "price": 39,
+      "description": "Deeply moisturizes and protects dry skin. Locks in moisture, leaving skin soft, smooth, and hydrated.",
+      "images": [
+        "https://i.imgur.com/tqEHfUA.jpeg",
+        "https://i.imgur.com/MXtOKrV.jpeg"
+      ],
+      "category": {
+        "id": 4,
+        "name": "Shoes",
+        "image": "https://i.imgur.com/qNOjJje.jpeg"
+      }
+    },
+    {
+      "id": "36",
+      "title": "Scala Hair Cream ",
+      "price": 39,
+      "description": "Scala Hair Cream nourishes and hydrates the hair, reducing frizz and adding shine. Lightweight and non-greasy, it leaves hair soft, smooth, and easy to manage.",
+      "images": [
+        "https://i.imgur.com/TBEoBGg.jpeg",
+        "https://i.imgur.com/A9DZfBy.jpeg",
+        "https://i.imgur.com/vtjUx9d.jpeg"
+      ],
+      "category": {
+        "id": 4,
+        "name": "Shoes",
+        "image": "https://i.imgur.com/qNOjJje.jpeg"
+      }
+    },
+    {
+      "id": "37",
+      "title": "Dior bag",
+      "price": 33,
+      "description": " A luxury accessory crafted with premium materials, featuring iconic design and timeless elegance, perfect for any occasion.",
+      "images": [
+        "https://i.imgur.com/V0PCHYu.jpeg",
+        "https://i.imgur.com/w5yqsIn.jpeg"
+      ],
+      "category": {
+        "id": 4,
+        "name": "Shoes",
+        "image": "https://i.imgur.com/qNOjJje.jpeg"
+      }
+    },
+    {
+      "id": "38",
+      "title": "jadore dior perfume",
+      "price": 27,
+      "description": "A luxurious feminine perfume with soft floral notes, blending elegance and femininity with scents of jasmine and rose.",
+      "images": [
+        "https://i.imgur.com/e6gLJkm.jpeg",
+        "https://i.imgur.com/j3YPmcZ.jpeg",
+        "https://i.imgur.com/fyMDNag.jpeg"
+      ],
+      "category": {
+        "id": 4,
+        "name": "Shoes",
+        "image": "https://i.imgur.com/qNOjJje.jpeg"
+      }
+    }
+  ],
+
+
+
+
+  "products": [
+    {
+      "id": "7",
+      "title": "Cetaphil Daily Facial Cleanser",
+      "price": 79,
+      "description": "This gentle cleanser removes dirt and oil without drying or irritating the skin. Its fragrance-free and soap-free formula makes it perfect for sensitive skin. It maintains the natural moisture barrier and is ideal for daily use.",
+      "images": [
+        "https://i.imgur.com/gQ90Kxf.jpeg",
+        "https://i.imgur.com/FtBDHQ7.jpeg",
+        "https://i.imgur.com/xfNvSs4.jpeg"
+      ],
+      "category": {
+        "id": 1,
+        "name": "nuevo",
+        "image": "https://i.imgur.com/QkIa5tT.jpeg"
+      }
+    },
+    {
+      "id": "8",
+      "title": "The Ordinary Vitamin C Serum",
+      "price":39.99,
+      "description": "A high-potency serum that brightens and evens skin tone while reducing dark spots. Contains pure vitamin C to fight free radicals and enhance radiance. Best used in the morning under moisturizer and sunscreen.",
+      "images": [
+        "https://i.imgur.com/uhFoACB.jpeg",
+        "https://i.imgur.com/bpwiVxg.jpeg",
+        "https://i.imgur.com/doQEniV.jpeg"
+      ],
+      "category": {
+        "id": 1,
+        "name": "nuevo",
+        "image": "https://i.imgur.com/QkIa5tT.jpeg"
+      }
+    },
+    {
+      "id": "9",
+      "title": "Neutrogena Hydro Boost Gel-Cream",
+      "price": 320,
+      "description": "A deeply hydrating gel-cream formulated with hyaluronic acid to lock in moisture. Non-greasy and quick-absorbing, it leaves your skin feeling soft and refreshed. Perfect for dry or dehydrated skin.",
+      "images": [
+        "https://i.imgur.com/jUhyqaV.jpeg",
+        "https://i.imgur.com/jWFzIqM.jpeg",
+        "https://i.imgur.com/ytiB18f.jpeg"
+      ],
+      "category": {
+        "id": 1,
+        "name": "nuevo",
+        "image": "https://i.imgur.com/QkIa5tT.jpeg"
+      }
+    },
+    {
+      "id": "11",
+      "title": "La Roche-Posay Sunscreen SPF 50",
+      "price": 60,
+      "description": "A lightweight sunscreen offering high broad-spectrum UVA/UVB protection with a matte finish. Its non-comedogenic formula is enriched with antioxidants. Ideal for oily or sensitive skin types.",
+      "images": [
+        "https://i.imgur.com/by7Pena.jpeg",
+        "https://i.imgur.com/epEBvjE.jpeg",
+        "https://i.imgur.com/H4dfB28.jpeg"
+      ],
+      "category": {
+        "id": 1,
+        "name": "nuevo",
+        "image": "https://i.imgur.com/QkIa5tT.jpeg"
+      }
+    },
+    {
+      "id": "12",
+      "title": "Nature Republic Rose Water Toner",
+      "price": 48,
+      "description": "A refreshing toner that hydrates and balances your skin's pH. Infused with rose extract to calm irritation and leave your skin glowing. Ideal for prepping skin before moisturizing.",
+      "images": [
+        "https://i.imgur.com/CWCnFRN.jpeg",
+        "https://i.imgur.com/YBScdcw.jpeg"
+        
+      ],
+      "category": {
+        "id": 1,
+        "name": "nuevo",
+        "image": "https://i.imgur.com/QkIa5tT.jpeg"
+      }
+    },
+    {
+      "id": "13",
+      "title": "Olay Regenerist Night Cream",
+      "price": 84,
+      "description": "A rich anti-aging night cream that repairs and rejuvenates skin overnight. Formulated with amino acids and moisturizers to reduce fine lines. Wake up to firmer, smoother skin.",
+      "images": [
+        "https://i.imgur.com/LfjpsQq.jpeg",
+        "https://i.imgur.com/rJZMCxD.jpeg"
+      ],
+      "category": {
+        "id": 1,
+        "name": "nuevo",
+        "image": "https://i.imgur.com/QkIa5tT.jpeg"
+      }
+    },
+    {
+      "id": "14",
+      "title": "Holika Holika Aloe Vera Gel",
+      "price": 43,
+      "description": "Made with 99% pure aloe vera to soothe and hydrate the skin. Perfect for sunburn, post-shave, or calming sensitive skin. Fast-absorbing and non-greasy, ideal for everyday use.",
+      "images": [
+        "https://i.imgur.com/CVUXUtS.jpeg",
+        "https://i.imgur.com/tJ88qhi.jpeg",
+        "https://i.imgur.com/z3QLDaT.jpeg"
+      ],
+      "category": {
+        "id": 1,
+        "name": "nuevo",
+        "image": "https://i.imgur.com/QkIa5tT.jpeg"
+      }
+    },
+    {
+      "id": "15",
+      "title": "The Body Shop Shea Body Butter",
+      "price": 80,
+      "description": "A rich and creamy body butter that deeply nourishes and moisturizes dry skin. Enriched with Community Fair Trade shea butter, it leaves skin feeling silky soft. The non-greasy formula absorbs quickly for a smooth finish.",
+      "images": [
+        "https://i.imgur.com/5M1FRMY.jpeg",
+        "https://i.imgur.com/P8MWb8C.jpeg",
+        "https://i.imgur.com/K58pjD2.jpeg"
+      ],
+      "category": {
+        "id": 1,
+        "name": "nuevo",
+        "image": "https://i.imgur.com/QkIa5tT.jpeg"
+      }
+    },
+    {
+      "id": "16",
+      "title": "Palmers Cocoa Butter Formula Lotion",
+      "price": 73,
+      "description": "A luxurious body lotion that moisturizes and helps to improve skin elasticity. It contains cocoa butter and Vitamin E to deeply hydrate and soothe dry skin. Perfect for everyday use to leave skin feeling soft and smooth.",
+      "images": [
+        "https://i.imgur.com/k3QmHOu.jpeg",
+        "https://i.imgur.com/E4whwUs.jpeg"
+      ],
+      "category": {
+        "id": 1,
+        "name": "nuevo",
+        "image": "https://i.imgur.com/QkIa5tT.jpeg"
+      }
+    },
+    {
+      "id": "17",
+      "title": "Dove Deep Moisture Nourishing Body Wash",
+      "price": 35,
+      "description": "A body wash that cleanses and nourishes dry skin. Its rich formula with moisturizing cream helps restore skin's natural moisture barrier. Leaves skin feeling soft, smooth, and refreshed after every shower.",
+      "images": [
+        "https://i.imgur.com/gj3x6vJ.jpeg",
+        "https://i.imgur.com/8peuyVv.jpeg"
+      ],
+      "category": {
+        "id": 1,
+        "name": "nuevo",
+        "image": "https://i.imgur.com/QkIa5tT.jpeg"
+      }
+    },
+    {
+      "id": "18",
+      "title": "YSL bag black",
+      "price": 100,
+      "description": "All made from high-quality leather, they add a luxurious touch to any look!.",
+      "images": [
+        "https://i.imgur.com/eCBYkt1.jpeg",
+        "https://i.imgur.com/qNj7otA.jpeg",
+        "https://i.imgur.com/xV7O8Rt.jpeg"
+      ],
+      "category": {
+        "id": 2,
+        "name": "Electronics",
+        "image": "https://i.imgur.com/ZANVnHE.jpeg"
+      }
+    },
+    {
+      "id": "19",
+      "title": "Gucci bag",
+      "price": 120,
+      "description": "This elegant Gucci bag features a classic, luxurious design in iconic GG canvas and brown leather details, with a bamboo handle for a unique touch. It comes with a long strap for multiple carrying options.",
+      "images": [
+        "https://i.imgur.com/WE39Y7B.jpeg",
+        "https://i.imgur.com/ALb52Y0.jpeg"
+        
+      ],
+      "category": {
+        "id": 2,
+        "name": "Electronics",
+        "image": "https://i.imgur.com/ZANVnHE.jpeg"
+      }
+    },
+    {
+      "id": "21",
+      "title": "Rolex Watche",
+      "price": 150,
+      "description": "This Rolex watch embodies luxury in every detail! Its classic design combines yellow gold and steel, with a smooth mother-of-pearl dial studded with diamond indexes that sparkle with elegance.",
+      "images": [
+        "https://i.imgur.com/K3GIRbR.jpeg",
+        "https://i.imgur.com/t4IrJaO.jpeg",
+        "https://i.imgur.com/YU5Ekji.jpeg"
+      ],
+      "category": {
+        "id": 2,
+        "name": "Electronics",
+        "image": "https://i.imgur.com/ZANVnHE.jpeg"
+      }
+    },
+    {
+      "id": "22",
+      "title": "Michael Kors gold watch",
+      "price": 120,
+      "description": "Combining modern elegance with a touch of luxury in every detail, its design is entirely in gold, with crystal details adding a soft feminine touch. Suitable for both formal and elegant casual looks, it's an ideal choice for anyone who loves shine and distinction in accessories.",
+      "images": [
+        "https://i.imgur.com/Hx3O2I6.jpeg",
+        "https://i.imgur.com/dLm474g.jpeg",
+        "https://i.imgur.com/u6wRZPQ.jpeg"
+      ],
+      "category": {
+        "id": 2,
+        "name": "Electronics",
+        "image": "https://i.imgur.com/ZANVnHE.jpeg"
+      }
+    },
+    {
+      "id": "23",
+      "title": "Gold Zircon Tennis Bracelet",
+      "price": 30,
+      "description": "An elegant and sophisticated piece of jewelry that combines simplicity with an attractive shine. Crafted from shiny gold metal, it is studded with sparkling zircon beads that resemble diamonds in their brilliance, giving it a touch of luxury without being overpowering.",
+      "images": [
+        "https://i.imgur.com/TvXy5KT.jpeg",
+        "https://i.imgur.com/bEenII7.jpeg"
+      ],
+      "category": {
+        "id": 2,
+        "name": "Electronics",
+        "image": "https://i.imgur.com/ZANVnHE.jpeg"
+      }
+    },
+    {
+      "id": "24",
+      "title": "SVan Cleef necklace",
+      "price": 45,
+      "description": "A luxurious piece that captures the eye with its refined elegance and classic touch. Crafted from lustrous silver, it features a harmonious arrangement of ten beads in the iconic Alhambra design. Each bead is shaped like a four-leaf flower and is set with a green stone (often malachite or green agate), symbolizing luck and beauty.",
+      "images": [
+        "https://i.imgur.com/mBL9SwQ.jpeg",
+        "https://i.imgur.com/nhkroFO.jpeg"
+     
+      ],
+      "category": {
+        "id": 2,
+        "name": "Electronics",
+        "image": "https://i.imgur.com/ZANVnHE.jpeg"
+      }
+    },
+    {
+      "id": "25",
+      "title": "Stainless Steel Water Bottle",
+      "price": 50,
+      "description": "A thermal water bottle in light purple, featuring a white lid with a straw and a comfortable handle. Its sleek and modern design makes it perfect for carrying hot or cold drinks on the go.",
+      "images": [
+        "https://i.imgur.com/vO7YJeT.jpeg",
+        "https://i.imgur.com/PogqbQ5.jpeg",
+        "https://i.imgur.com/tsUNzkh.jpeg"
+      ],
+      "category": {
+        "id": 2,
+        "name": "Electronics",
+        "image": "https://i.imgur.com/ZANVnHE.jpeg"
+      }
+    },
+    {
+      "id": "26",
+      "title": "Cartier Juste un Clou Ring",
+      "price": 30,
+      "description": "A stunning Cartier Juste un Clou ring crafted in yellow gold and accented with brilliant-cut diamonds. Inspired by a simple nail, this iconic piece combines edgy design with timeless elegance. Comes with the original Cartier box.",
+      "images": [
+        "https://i.imgur.com/YuDPn4b.jpeg"
+      ],
+      "category": {
+        "id": 2,
+        "name": "Electronics",
+        "image": "https://i.imgur.com/ZANVnHE.jpeg"
+      }
+    },
+    {
+      "id": "27",
+      "title": "Dior package",
+      "price": 150,
+      "description": "An elegant and luxurious Dior gift set featuring a stunning designer handbag, presented in a signature Dior box and accompanied by the official Dior shopping bag. Perfect for gifting or personal .",
+      "images": [
+        "https://i.imgur.com/XzXCgq5.jpeg",
+        "https://i.imgur.com/F2MiFsU.jpeg"
+      ],
+      "category": {
+        "id": 2,
+        "name": "Electronics",
+        "image": "https://i.imgur.com/ZANVnHE.jpeg"
+      }
+    },
+    {
+      "id": "28",
+      "title": "Michael Kors Zip-Around Wallet ",
+      "price": 50,
+      "description": "A stylish and compact Michael Kors zip-around wallet in a rich coffee brown color, featuring the iconic MK monogram design. Crafted for everyday elegance, it includes multiple card slots, a secure zip closure, and a chic gold-tone logo. Comes with the original MK box.",
+      "images": [
+        "https://i.imgur.com/fai372E.jpeg",
+        "https://i.imgur.com/JYFxfQz.jpeg",
+        "https://i.imgur.com/aeMiZKa.jpeg"
+      ],
+      "category": {
+        "id": 3,
+        "name": "nuevo",
+        "image": "https://i.imgur.com/Qphac99.jpeg"
+      }
+    }
+
+
+
+
+
+
+  ],
+  "categories": [
+    {
+      "id": "1",
+      "name": "Skin Care",
+      "image": "https://i.imgur.com/C2FGd47.jpeg"
+    },
+    {
+      "id": "2",
+      "name": "Body Care",
+      "image": "https://i.imgur.com/9zesRt6.jpeg"
+    },
+    {
+      "id": "3",
+      "name": "Gift",
+      "image": "https://i.imgur.com/7LGgdxi.jpeg"
+    },
+    {
+      "id": "4",
+      "name": "Watches",
+      "image": "https://i.imgur.com/2WxbAgI.jpeg"
+    },
+    {
+      "id": "5",
+      "name": "Accessories",
+      "image": "https://i.imgur.com/qmISyYp.jpeg"
+    },
+    {
+      "id": "6",
+      "name": "Handbag",
+      "image": "https://i.imgur.com/MtFecZM.jpeg"
+    },
+    {
+      "id": "7",
+      "name": "Prefumes",
+      "image": "https://i.imgur.com/0Qht3Ob.jpeg"
+    },
+    {
+      "id": "8",
+      "name": "Hair Care",
+      "image": "https://i.imgur.com/uX8VmUA.jpeg"
+    }
+  ],
+  "cart": [
+    {
+      "id": "1",
+      "title": "Classic White T-Shirt",
+      "price": 20,
+      "quantity": 1,
+      "image": "https://i.imgur.com/axsyGpD.jpeg"
+    },
+    {
+      "id": "2",
+      "title": "Sleek Wireless Computer Mouse",
+      "price": 10,
+      "quantity": 1,
+      "image": "https://i.imgur.com/w3Y8NwQ.jpeg"
+    },
+    {
+      "id": "3",
+      "title": "Sleek Smartwatch with Vibrant Display",
+      "price": 16,
+      "quantity": 1,
+      "image": "https://i.imgur.com/LGk9Jn2.jpeg"
+    },
+    {
+      "id": "30",
       "title": "Elegant Golden-Base Stone Top Dining Table",
       "price": 66,
       "description": "Elevate your dining space with this luxurious table, featuring a sturdy golden metal base with an intricate rod design that provides both stability and chic elegance. The smooth stone top in a sleek round shape offers a robust surface for your dining pleasure. Perfect for both everyday meals and special occasions, this table easily complements any modern or glam decor.",
@@ -30,535 +562,164 @@
         "id": 3,
         "name": "nuevo",
         "image": "https://i.imgur.com/Qphac99.jpeg"
-      }
+      },
+      "quantity": 1
     },
     {
-      "id": 31,
-      "title": "Modern Elegance Teal Armchair",
-      "price": 25,
-      "description": "Elevate your living space with this beautifully crafted armchair, featuring a sleek wooden frame that complements its vibrant teal upholstery. Ideal for adding a pop of color and contemporary style to any room, this chair provides both superb comfort and sophisticated design. Perfect for reading, relaxing, or creating a cozy conversation nook.",
+      "id": "29",
+      "title": "Dior Addict Lip Glow Oil",
+      "price": 181,
+      "description": "The Dior Addict Lip Glow lip balm is available as a glossy lip oil that deeply protects and enhances the lips, bringing out their natural colour.",
       "images": [
-        "https://i.imgur.com/6wkyyIN.jpeg",
-        "https://i.imgur.com/Ald3Rec.jpeg",
-        "https://i.imgur.com/dIqo03c.jpeg"
+        "https://imgur.com/C5KgUby.jpeg",
+        "https://imgur.com/qOpa8v6.jpeg",
+        "https://imgur.com/mH79dWw.jpeg",
+        "https://imgur.com/j9twT3t.jpeg"
       ],
       "category": {
         "id": 3,
         "name": "nuevo",
         "image": "https://i.imgur.com/Qphac99.jpeg"
-      }
+      },
+      "quantity": 1
     },
     {
-      "id": 32,
-      "title": "Elegant Solid Wood Dining Table",
-      "price": 67,
-      "description": "Enhance your dining space with this sleek, contemporary dining table, crafted from high-quality solid wood with a warm finish. Its sturdy construction and minimalist design make it a perfect addition for any home looking for a touch of elegance. Accommodates up to six guests comfortably and includes a striking fruit bowl centerpiece. The overhead lighting is not included.",
+      "id": "30",
+      "title": "Elegant Golden-Base Stone Top Dining Table",
+      "price": 66,
+      "description": "Elevate your dining space with this luxurious table, featuring a sturdy golden metal base with an intricate rod design that provides both stability and chic elegance. The smooth stone top in a sleek round shape offers a robust surface for your dining pleasure. Perfect for both everyday meals and special occasions, this table easily complements any modern or glam decor.",
       "images": [
-        "https://i.imgur.com/4lTaHfF.jpeg",
-        "https://i.imgur.com/JktHE1C.jpeg",
-        "https://i.imgur.com/cQeXQMi.jpeg"
+        "https://i.imgur.com/NWIJKUj.jpeg",
+        "https://i.imgur.com/Jn1YSLk.jpeg",
+        "https://i.imgur.com/VNZRvx5.jpeg"
       ],
       "category": {
         "id": 3,
         "name": "nuevo",
         "image": "https://i.imgur.com/Qphac99.jpeg"
-      }
+      },
+      "quantity": 1
     },
     {
-      "id": 33,
-      "title": "Modern Minimalist Workstation Setup",
-      "price": 49,
-      "description": "Elevate your home office with our Modern Minimalist Workstation Setup, featuring a sleek wooden desk topped with an elegant computer, stylish adjustable wooden desk lamp, and complimentary accessories for a clean, productive workspace. This setup is perfect for professionals seeking a contemporary look that combines functionality with design.",
+      "id": "29",
+      "title": "Dior Addict Lip Glow Oil",
+      "price": 181,
+      "description": "The Dior Addict Lip Glow lip balm is available as a glossy lip oil that deeply protects and enhances the lips, bringing out their natural colour.",
       "images": [
-        "https://i.imgur.com/3oXNBst.jpeg",
-        "https://i.imgur.com/ErYYZnT.jpeg",
-        "https://i.imgur.com/boBPwYW.jpeg"
+        "https://imgur.com/C5KgUby.jpeg",
+        "https://imgur.com/qOpa8v6.jpeg",
+        "https://imgur.com/mH79dWw.jpeg",
+        "https://imgur.com/j9twT3t.jpeg"
       ],
       "category": {
         "id": 3,
         "name": "nuevo",
         "image": "https://i.imgur.com/Qphac99.jpeg"
-      }
+      },
+      "quantity": 1
     },
     {
-      "id": 34,
-      "title": "Modern Ergonomic Office Chair",
+      "id": "30",
+      "title": "Elegant Golden-Base Stone Top Dining Table",
+      "price": 66,
+      "description": "Elevate your dining space with this luxurious table, featuring a sturdy golden metal base with an intricate rod design that provides both stability and chic elegance. The smooth stone top in a sleek round shape offers a robust surface for your dining pleasure. Perfect for both everyday meals and special occasions, this table easily complements any modern or glam decor.",
+      "images": [
+        "https://i.imgur.com/NWIJKUj.jpeg",
+        "https://i.imgur.com/Jn1YSLk.jpeg",
+        "https://i.imgur.com/VNZRvx5.jpeg"
+      ],
+      "category": {
+        "id": 3,
+        "name": "nuevo",
+        "image": "https://i.imgur.com/Qphac99.jpeg"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "29",
+      "title": "Beauty of Johnson sunscreen",
+      "price": 70,
+      "description": "Rich in nourishing rice seed water and soothing panthenol, this sunscreen not only protects the skin but also revitalizes it from exposure to UV rays and heat,Fast-absorbing cream formula.",
+      "images": [
+        "https://i.imgur.com/s7OAR6K.jpeg",
+        "https://i.imgur.com/eKbrEsk.jpeg",
+        "https://i.imgur.com/9jAadll.jpeg"
+      ],
+      "category": {
+        "id": 3,
+        "name": "nuevo",
+        "image": "https://i.imgur.com/Qphac99.jpeg"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "29",
+      "title": "Beauty of Johnson sunscreen",
+      "price": 70,
+      "description": "Rich in nourishing rice seed water and soothing panthenol, this sunscreen not only protects the skin but also revitalizes it from exposure to UV rays and heat,Fast-absorbing cream formula.",
+      "images": [
+        "https://i.imgur.com/s7OAR6K.jpeg",
+        "https://i.imgur.com/eKbrEsk.jpeg",
+        "https://i.imgur.com/9jAadll.jpeg"
+      ],
+      "category": {
+        "id": 3,
+        "name": "nuevo",
+        "image": "https://i.imgur.com/Qphac99.jpeg"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "34",
+      "title": "LV Handbag",
       "price": 71,
-      "description": "Elevate your office space with this sleek and comfortable Modern Ergonomic Office Chair. Designed to provide optimal support throughout the workday, it features an adjustable height mechanism, smooth-rolling casters for easy mobility, and a cushioned seat for extended comfort. The clean lines and minimalist white design make it a versatile addition to any contemporary workspace.",
+      "description": "Elegant and timeless, this Louis Vuitton bag combines luxury and functionality. Crafted from premium materials with the iconic LV monogram, it features a spacious interior, durable handles, and refined detailing — perfect for both everyday use and special occasions.",
       "images": [
-        "https://i.imgur.com/3dU0m72.jpeg",
-        "https://i.imgur.com/zPU3EVa.jpeg"
+        "https://i.imgur.com/dg1vSIV.jpeg",
+        "https://i.imgur.com/SDsKhu6.jpeg",
+        "https://i.imgur.com/LHkWgcK.jpeg"
       ],
       "category": {
         "id": 3,
         "name": "nuevo",
         "image": "https://i.imgur.com/Qphac99.jpeg"
-      }
-    },
-    {
-      "id": 35,
-      "title": "Futuristic Holographic Soccer Cleats",
-      "price": 39,
-      "description": "Step onto the field and stand out from the crowd with these eye-catching holographic soccer cleats. Designed for the modern player, these cleats feature a sleek silhouette, lightweight construction for maximum agility, and durable studs for optimal traction. The shimmering holographic finish reflects a rainbow of colors as you move, ensuring that you'll be noticed for both your skills and style. Perfect for the fashion-forward athlete who wants to make a statement.",
-      "images": [
-        "https://i.imgur.com/qNOjJje.jpeg",
-        "https://i.imgur.com/NjfCFnu.jpeg",
-        "https://i.imgur.com/eYtvXS1.jpeg"
-      ],
-      "category": {
-        "id": 4,
-        "name": "Shoes",
-        "image": "https://i.imgur.com/qNOjJje.jpeg"
-      }
-    },
-    {
-      "id": 36,
-      "title": "Rainbow Glitter High Heels",
-      "price": 39,
-      "description": "Step into the spotlight with these eye-catching rainbow glitter high heels. Designed to dazzle, each shoe boasts a kaleidoscope of shimmering colors that catch and reflect light with every step. Perfect for special occasions or a night out, these stunners are sure to turn heads and elevate any ensemble.",
-      "images": [
-        "https://i.imgur.com/62gGzeF.jpeg",
-        "https://i.imgur.com/5MoPuFM.jpeg",
-        "https://i.imgur.com/sUVj7pK.jpeg"
-      ],
-      "category": {
-        "id": 4,
-        "name": "Shoes",
-        "image": "https://i.imgur.com/qNOjJje.jpeg"
-      }
-    },
-    {
-      "id": 37,
-      "title": "Chic Summer Denim Espadrille Sandals",
-      "price": 33,
-      "description": "Step into summer with style in our denim espadrille sandals. Featuring a braided jute sole for a classic touch and adjustable denim straps for a snug fit, these sandals offer both comfort and a fashionable edge. The easy slip-on design ensures convenience for beach days or casual outings.",
-      "images": [
-        "https://i.imgur.com/9qrmE1b.jpeg",
-        "https://i.imgur.com/wqKxBVH.jpeg",
-        "https://i.imgur.com/sWSV6DK.jpeg"
-      ],
-      "category": {
-        "id": 4,
-        "name": "Shoes",
-        "image": "https://i.imgur.com/qNOjJje.jpeg"
-      }
-    },
-    {
-      "id": 38,
-      "title": "Vibrant Runners: Bold Orange & Blue Sneakers",
-      "price": 27,
-      "description": "Step into style with these eye-catching sneakers featuring a striking combination of orange and blue hues. Designed for both comfort and fashion, these shoes come with flexible soles and cushioned insoles, perfect for active individuals who don't compromise on style. The reflective silver accents add a touch of modernity, making them a standout accessory for your workout or casual wear.",
-      "images": [
-        "https://i.imgur.com/hKcMNJs.jpeg",
-        "https://i.imgur.com/NYToymX.jpeg",
-        "https://i.imgur.com/HiiapCt.jpeg"
-      ],
-      "category": {
-        "id": 4,
-        "name": "Shoes",
-        "image": "https://i.imgur.com/qNOjJje.jpeg"
-      }
+      },
+      "quantity": 1
     }
-  ],
-  "products": [
-    {
-      "id": 7,
-      "title": "Classic Comfort Drawstring Joggers",
-      "price": 79,
-      "description": "Experience the perfect blend of comfort and style with our Classic Comfort Drawstring Joggers. Designed for a relaxed fit, these joggers feature a soft, stretchable fabric, convenient side pockets, and an adjustable drawstring waist with elegant gold-tipped detailing. Ideal for lounging or running errands, these pants will quickly become your go-to for effortless, casual wear.",
-      "images": [
-        "https://i.imgur.com/mp3rUty.jpeg",
-        "https://i.imgur.com/JQRGIc2.jpeg"
-      ],
-      "category": {
-        "id": 1,
-        "name": "nuevo",
-        "image": "https://i.imgur.com/QkIa5tT.jpeg"
-      }
-    },
-    {
-      "id": 8,
-      "title": "Classic Red Jogger Sweatpants",
-      "price": 98,
-      "description": "Experience ultimate comfort with our red jogger sweatpants, perfect for both workout sessions and lounging around the house. Made with soft, durable fabric, these joggers feature a snug waistband, adjustable drawstring, and practical side pockets for functionality. Their tapered design and elastic cuffs offer a modern fit that keeps you looking stylish on the go.",
-      "images": [
-        "https://i.imgur.com/9LFjwpI.jpeg",
-        "https://i.imgur.com/vzrTgUR.jpeg",
-        "https://i.imgur.com/p5NdI6n.jpeg"
-      ],
-      "category": {
-        "id": 1,
-        "name": "nuevo",
-        "image": "https://i.imgur.com/QkIa5tT.jpeg"
-      }
-    },
-    {
-      "id": 9,
-      "title": "Classic Navy Blue Baseball Cap",
-      "price": 61,
-      "description": "Step out in style with this sleek navy blue baseball cap. Crafted from durable material, it features a smooth, structured design and an adjustable strap for the perfect fit. Protect your eyes from the sun and complement your casual looks with this versatile and timeless accessory.",
-      "images": [
-        "https://i.imgur.com/R3iobJA.jpeg",
-        "https://i.imgur.com/Wv2KTsf.jpeg",
-        "https://i.imgur.com/76HAxcA.jpeg"
-      ],
-      "category": {
-        "id": 1,
-        "name": "nuevo",
-        "image": "https://i.imgur.com/QkIa5tT.jpeg"
-      }
-    },
-    {
-      "id": 11,
-      "title": "Classic Red Baseball Cap",
-      "price": 35,
-      "description": "Elevate your casual wardrobe with this timeless red baseball cap. Crafted from durable fabric, it features a comfortable fit with an adjustable strap at the back, ensuring one size fits all. Perfect for sunny days or adding a sporty touch to your outfit.",
-      "images": [
-        "https://i.imgur.com/cBuLvBi.jpeg",
-        "https://i.imgur.com/N1GkCIR.jpeg",
-        "https://i.imgur.com/kKc9A5p.jpeg"
-      ],
-      "category": {
-        "id": 1,
-        "name": "nuevo",
-        "image": "https://i.imgur.com/QkIa5tT.jpeg"
-      }
-    },
-    {
-      "id": 12,
-      "title": "Classic Black Baseball Cap",
-      "price": 58,
-      "description": "Elevate your casual wear with this timeless black baseball cap. Made with high-quality, breathable fabric, it features an adjustable strap for the perfect fit. Whether you’re out for a jog or just running errands, this cap adds a touch of style to any outfit.",
-      "images": [
-        "https://i.imgur.com/KeqG6r4.jpeg",
-        "https://i.imgur.com/xGQOw3p.jpeg",
-        "https://i.imgur.com/oO5OUjb.jpeg"
-      ],
-      "category": {
-        "id": 1,
-        "name": "nuevo",
-        "image": "https://i.imgur.com/QkIa5tT.jpeg"
-      }
-    },
-    {
-      "id": 13,
-      "title": "Classic Olive Chino Shorts",
-      "price": 84,
-      "description": "Elevate your casual wardrobe with these classic olive chino shorts. Designed for comfort and versatility, they feature a smooth waistband, practical pockets, and a tailored fit that makes them perfect for both relaxed weekends and smart-casual occasions. The durable fabric ensures they hold up throughout your daily activities while maintaining a stylish look.",
-      "images": [
-        "https://i.imgur.com/UsFIvYs.jpeg",
-        "https://i.imgur.com/YIq57b6.jpeg"
-      ],
-      "category": {
-        "id": 1,
-        "name": "nuevo",
-        "image": "https://i.imgur.com/QkIa5tT.jpeg"
-      }
-    },
-    {
-      "id": 14,
-      "title": "Classic High-Waisted Athletic Shorts",
-      "price": 43,
-      "description": "Stay comfortable and stylish with our Classic High-Waisted Athletic Shorts. Designed for optimal movement and versatility, these shorts are a must-have for your workout wardrobe. Featuring a figure-flattering high waist, breathable fabric, and a secure fit that ensures they stay in place during any activity, these shorts are perfect for the gym, running, or even just casual wear.",
-      "images": [
-        "https://i.imgur.com/eGOUveI.jpeg",
-        "https://i.imgur.com/UcsGO7E.jpeg",
-        "https://i.imgur.com/NLn4e7S.jpeg"
-      ],
-      "category": {
-        "id": 1,
-        "name": "nuevo",
-        "image": "https://i.imgur.com/QkIa5tT.jpeg"
-      }
-    },
-    {
-      "id": 15,
-      "title": "Classic White Crew Neck T-Shirt",
-      "price": 39,
-      "description": "Elevate your basics with this versatile white crew neck tee. Made from a soft, breathable cotton blend, it offers both comfort and durability. Its sleek, timeless design ensures it pairs well with virtually any outfit. Ideal for layering or wearing on its own, this t-shirt is a must-have staple for every wardrobe.",
-      "images": [
-        "https://i.imgur.com/axsyGpD.jpeg",
-        "https://i.imgur.com/T8oq9X2.jpeg",
-        "https://i.imgur.com/J6MinJn.jpeg"
-      ],
-      "category": {
-        "id": 1,
-        "name": "nuevo",
-        "image": "https://i.imgur.com/QkIa5tT.jpeg"
-      }
-    },
-    {
-      "id": 16,
-      "title": "Classic White Tee - Timeless Style and Comfort",
-      "price": 73,
-      "description": "Elevate your everyday wardrobe with our Classic White Tee. Crafted from premium soft cotton material, this versatile t-shirt combines comfort with durability, perfect for daily wear. Featuring a relaxed, unisex fit that flatters every body type, it's a staple piece for any casual ensemble. Easy to care for and machine washable, this white tee retains its shape and softness wash after wash. Pair it with your favorite jeans or layer it under a jacket for a smart look.",
-      "images": [
-        "https://i.imgur.com/Y54Bt8J.jpeg",
-        "https://i.imgur.com/SZPDSgy.jpeg",
-        "https://i.imgur.com/sJv4Xx0.jpeg"
-      ],
-      "category": {
-        "id": 1,
-        "name": "nuevo",
-        "image": "https://i.imgur.com/QkIa5tT.jpeg"
-      }
-    },
-    {
-      "id": 17,
-      "title": "Classic Black T-Shirt",
-      "price": 35,
-      "description": "Elevate your everyday style with our Classic Black T-Shirt. This staple piece is crafted from soft, breathable cotton for all-day comfort. Its versatile design features a classic crew neck and short sleeves, making it perfect for layering or wearing on its own. Durable and easy to care for, it's sure to become a favorite in your wardrobe.",
-      "images": [
-        "https://i.imgur.com/9DqEOV5.jpeg",
-        "https://i.imgur.com/ae0AEYn.jpeg",
-        "https://i.imgur.com/mZ4rUjj.jpeg"
-      ],
-      "category": {
-        "id": 1,
-        "name": "nuevo",
-        "image": "https://i.imgur.com/QkIa5tT.jpeg"
-      }
-    },
-    {
-      "id": 18,
-      "title": "Sleek White & Orange Wireless Gaming Controller",
-      "price": 69,
-      "description": "Elevate your gaming experience with this state-of-the-art wireless controller, featuring a crisp white base with vibrant orange accents. Designed for precision play, the ergonomic shape and responsive buttons provide maximum comfort and control for endless hours of gameplay. Compatible with multiple gaming platforms, this controller is a must-have for any serious gamer looking to enhance their setup.",
-      "images": [
-        "https://i.imgur.com/ZANVnHE.jpeg",
-        "https://i.imgur.com/Ro5z6Tn.jpeg",
-        "https://i.imgur.com/woA93Li.jpeg"
-      ],
-      "category": {
-        "id": 2,
-        "name": "Electronics",
-        "image": "https://i.imgur.com/ZANVnHE.jpeg"
-      }
-    },
-    {
-      "id": 19,
-      "title": "Sleek Wireless Headphone & Inked Earbud Set",
-      "price": 44,
-      "description": "Experience the fusion of style and sound with this sophisticated audio set featuring a pair of sleek, white wireless headphones offering crystal-clear sound quality and over-ear comfort. The set also includes a set of durable earbuds, perfect for an on-the-go lifestyle. Elevate your music enjoyment with this versatile duo, designed to cater to all your listening needs.",
-      "images": [
-        "https://i.imgur.com/yVeIeDa.jpeg",
-        "https://i.imgur.com/jByJ4ih.jpeg",
-        "https://i.imgur.com/KXj6Tpb.jpeg"
-      ],
-      "category": {
-        "id": 2,
-        "name": "Electronics",
-        "image": "https://i.imgur.com/ZANVnHE.jpeg"
-      }
-    },
-    {
-      "id": 21,
-      "title": "Efficient 2-Slice Toaster",
-      "price": 48,
-      "description": "Enhance your morning routine with our sleek 2-slice toaster, featuring adjustable browning controls and a removable crumb tray for easy cleaning. This compact and stylish appliance is perfect for any kitchen, ensuring your toast is always golden brown and delicious.",
-      "images": [
-        "https://i.imgur.com/keVCVIa.jpeg",
-        "https://i.imgur.com/afHY7v2.jpeg",
-        "https://i.imgur.com/yAOihUe.jpeg"
-      ],
-      "category": {
-        "id": 2,
-        "name": "Electronics",
-        "image": "https://i.imgur.com/ZANVnHE.jpeg"
-      }
-    },
-    {
-      "id": 22,
-      "title": "Sleek Wireless Computer Mouse",
-      "price": 10,
-      "description": "Experience smooth and precise navigation with this modern wireless mouse, featuring a glossy finish and a comfortable ergonomic design. Its responsive tracking and easy-to-use interface make it the perfect accessory for any desktop or laptop setup. The stylish blue hue adds a splash of color to your workspace, while its compact size ensures it fits neatly in your bag for on-the-go productivity.",
-      "images": [
-        "https://i.imgur.com/w3Y8NwQ.jpeg",
-        "https://i.imgur.com/WJFOGIC.jpeg",
-        "https://i.imgur.com/dV4Nklf.jpeg"
-      ],
-      "category": {
-        "id": 2,
-        "name": "Electronics",
-        "image": "https://i.imgur.com/ZANVnHE.jpeg"
-      }
-    },
-    {
-      "id": 23,
-      "title": "Sleek Modern Laptop with Ambient Lighting",
-      "price": 43,
-      "description": "Experience next-level computing with our ultra-slim laptop, featuring a stunning display illuminated by ambient lighting. This high-performance machine is perfect for both work and play, delivering powerful processing in a sleek, portable design. The vibrant colors add a touch of personality to your tech collection, making it as stylish as it is functional.",
-      "images": [
-        "https://i.imgur.com/OKn1KFI.jpeg",
-        "https://i.imgur.com/G4f21Ai.jpeg",
-        "https://i.imgur.com/Z9oKRVJ.jpeg"
-      ],
-      "category": {
-        "id": 2,
-        "name": "Electronics",
-        "image": "https://i.imgur.com/ZANVnHE.jpeg"
-      }
-    },
-    {
-      "id": 24,
-      "title": "Sleek Modern Laptop for Professionals",
-      "price": 97,
-      "description": "Experience cutting-edge technology and elegant design with our latest laptop model. Perfect for professionals on-the-go, this high-performance laptop boasts a powerful processor, ample storage, and a long-lasting battery life, all encased in a lightweight, slim frame for ultimate portability. Shop now to elevate your work and play.",
-      "images": [
-        "https://i.imgur.com/ItHcq7o.jpeg",
-        "https://i.imgur.com/55GM3XZ.jpeg",
-        "https://i.imgur.com/tcNJxoW.jpeg"
-      ],
-      "category": {
-        "id": 2,
-        "name": "Electronics",
-        "image": "https://i.imgur.com/ZANVnHE.jpeg"
-      }
-    },
-    {
-      "id": 25,
-      "title": "Stylish Red & Silver Over-Ear Headphones",
-      "price": 39,
-      "description": "Immerse yourself in superior sound quality with these sleek red and silver over-ear headphones. Designed for comfort and style, the headphones feature cushioned ear cups, an adjustable padded headband, and a detachable red cable for easy storage and portability. Perfect for music lovers and audiophiles who value both appearance and audio fidelity.",
-      "images": [
-        "https://i.imgur.com/YaSqa06.jpeg",
-        "https://i.imgur.com/isQAliJ.jpeg",
-        "https://i.imgur.com/5B8UQfh.jpeg"
-      ],
-      "category": {
-        "id": 2,
-        "name": "Electronics",
-        "image": "https://i.imgur.com/ZANVnHE.jpeg"
-      }
-    },
-    {
-      "id": 26,
-      "title": "Sleek Mirror Finish Phone Case",
-      "price": 27,
-      "description": "Enhance your smartphone's look with this ultra-sleek mirror finish phone case. Designed to offer style with protection, the case features a reflective surface that adds a touch of elegance while keeping your device safe from scratches and impacts. Perfect for those who love a minimalist and modern aesthetic.",
-      "images": [
-        "https://i.imgur.com/yb9UQKL.jpeg",
-        "https://i.imgur.com/m2owtQG.jpeg",
-        "https://i.imgur.com/bNiORct.jpeg"
-      ],
-      "category": {
-        "id": 2,
-        "name": "Electronics",
-        "image": "https://i.imgur.com/ZANVnHE.jpeg"
-      }
-    },
-    {
-      "id": 27,
-      "title": "Sleek Smartwatch with Vibrant Display",
-      "price": 16,
-      "description": "Experience modern timekeeping with our high-tech smartwatch, featuring a vivid touch screen display, customizable watch faces, and a comfortable blue silicone strap. This smartwatch keeps you connected with notifications and fitness tracking while showcasing exceptional style and versatility.",
-      "images": [
-        "https://i.imgur.com/LGk9Jn2.jpeg",
-        "https://i.imgur.com/1ttYWaI.jpeg",
-        "https://i.imgur.com/sPRWnJH.jpeg"
-      ],
-      "category": {
-        "id": 2,
-        "name": "Electronics",
-        "image": "https://i.imgur.com/ZANVnHE.jpeg"
-      }
-    },
-    {
-      "id": 28,
-      "title": "Sleek Modern Leather Sofa",
-      "price": 53,
-      "description": "Enhance the elegance of your living space with our Sleek Modern Leather Sofa. Designed with a minimalist aesthetic, it features clean lines and a luxurious leather finish. The robust metal legs provide stability and support, while the plush cushions ensure comfort. Perfect for contemporary homes or office waiting areas, this sofa is a statement piece that combines style with practicality.",
-      "images": [
-        "https://i.imgur.com/Qphac99.jpeg",
-        "https://i.imgur.com/dJjpEgG.jpeg",
-        "https://i.imgur.com/MxJyADq.jpeg"
-      ],
-      "category": {
-        "id": 3,
-        "name": "nuevo",
-        "image": "https://i.imgur.com/Qphac99.jpeg"
-      }
-    }
-  ],
-  "categories": [
-    {
-      "id": 1,
-      "name": "Clothes",
-      "image": "https://i.imgur.com/QkIa5tT.jpeg"
-    },
-    {
-      "id": 2,
-      "name": "Electronics",
-      "image": "https://i.imgur.com/ZANVnHE.jpeg"
-    },
-    {
-      "id": 3,
-      "name": "Furniture",
-      "image": "https://i.imgur.com/Qphac99.jpeg"
-    },
-    {
-      "id": 4,
-      "name": "Shoes",
-      "image": "https://i.imgur.com/qNOjJje.jpeg"
-    },
-    {
-      "id": 5,
-      "name": "Jewellery",
-      "image": "https://pngimagesfree.com/wp-content/uploads/Gold-Jewellery-Necklaces-PNG@.png"
-    },
-    {
-      "id": 6,
-      "name": "Miscellaneous",
-      "image": "https://i.imgur.com/BG8J0Fj.jpg"
-    }
-  ],
-  "cart": [
-    {
-      "id": 1,
-      "title": "Classic White T-Shirt",
-      "price": 20,
-      "quantity": 1,
-      "image": "https://i.imgur.com/axsyGpD.jpeg"
-    },
-    {
-      "id": 2,
-      "title": "Sleek Wireless Computer Mouse",
-      "price": 10,
-      "quantity": 1,
-      "image": "https://i.imgur.com/w3Y8NwQ.jpeg"
-    },
-    {
-      "id": 3,
-      "title": "Sleek Smartwatch with Vibrant Display",
-      "price": 16,
-      "quantity": 1,
-      "image":  "https://i.imgur.com/LGk9Jn2.jpeg"
-    }
+
+
+    
   ],
   "notifications": [
     {
-      "id": 1,
+      "id": "1",
       "title": "Order Placed",
       "message": "Your order has been successfully placed.",
       "timestamp": "3 hours ago"
     },
     {
-      "id": 2,
-      "title": "Payment Received",  
-      "message": "Your payment has been successfully received.",  
+      "id": "2",
+      "title": "Payment Received",
+      "message": "Your payment has been successfully received.",
       "timestamp": "4 hours ago"
     },
     {
-      "id": 3,
+      "id": "3",
       "title": "Order Delivered",
       "message": "Your order has been successfully delivered.",
       "timestamp": "2 days ago"
     },
     {
-      "id": 4,
+      "id": "4",
       "title": "Order Cancelled",
       "message": "Your order has been successfully cancelled.",
       "timestamp": "5 days ago"
+    },
+    {
+      "id": "5",
+      "title": "Order Shiooed",
+      "message": "Your order has been successfully shipped.",
+      "timestamp": "4 weeks ago"
     }
   ]
 }

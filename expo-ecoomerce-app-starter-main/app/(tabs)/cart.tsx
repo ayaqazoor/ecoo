@@ -2,29 +2,29 @@ import { StyleSheet, Text, View, Image, FlatList, TouchableOpacity } from 'react
 import React, { useState, useEffect, useCallback } from 'react';
 import { CartItemType } from '../../types/type';
 import axios from 'axios';
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router'; // استدعاء router
 import { useHeaderHeight } from '@react-navigation/elements';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '@/constants/Colors';
 
-const CartScreen: React.FC = () => {  
+const CartScreen: React.FC = () => {
   const [cartItems, setCartItems] = useState<CartItemType[]>([]);
   const headerHeight = useHeaderHeight();
 
   const getCartData = useCallback(async () => {
     try {
-      const URL = 'http://192.168.129.177:8000/cart';
+      const URL = 'http://192.168.112.177:8000/cart';
       const response = await axios.get(URL);
       console.log('Cart Data response:', response.data);
-      
+
       const uniqueItems = response.data.reduce((acc: CartItemType[], item: CartItemType) => {
         if (!acc.find((el) => el.id === item.id)) {
           acc.push(item);
         }
         return acc;
       }, []);
-      
+
       setCartItems(uniqueItems);
     } catch (error) {
       console.error("Error fetching cart data:", error);
@@ -55,31 +55,34 @@ const CartScreen: React.FC = () => {
     setCartItems((prev) => prev.filter((item) => item.id !== id));
   };
 
+  const total = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+
   return (
     <>
       <Stack.Screen options={{ headerShown: true, headerTransparent: true }} />
       <View style={[styles.container, { marginTop: headerHeight }]}>
-        <FlatList 
-          data={cartItems} 
-          keyExtractor={(item, index) => `${item.id}-${index}`} 
-          renderItem={({ item, index }) => ( 
-            <CartItem 
+        <FlatList
+          data={cartItems}
+          keyExtractor={(item, index) => `${item.id}-${index}`}
+          renderItem={({ item, index }) => (
+            <CartItem
               key={`${item.id}-${index}`}
-              item={item} 
-              increaseQuantity={increaseQuantity} 
-              decreaseQuantity={decreaseQuantity} 
+              item={item}
+              increaseQuantity={increaseQuantity}
+              decreaseQuantity={decreaseQuantity}
               removeItem={removeItem}
             />
           )}
-        />   
+        />
       </View>
       <View style={styles.footer}>
         <View style={styles.priceInfoWrapper}>
-          <Text style={styles.totalText}>
-            Total: ₪{cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0)}
-          </Text>
+          <Text style={styles.totalText}>Total: ₪{total}</Text>
         </View>
-        <TouchableOpacity style={styles.checkoutBtn}>
+        <TouchableOpacity
+          style={styles.checkoutBtn}
+          onPress={() => router.push({ pathname: "/checkout", params: { total } })}
+          >
           <Text style={styles.checkoutBtnText}>Checkout</Text>
         </TouchableOpacity>
       </View>
@@ -87,7 +90,7 @@ const CartScreen: React.FC = () => {
   );
 };
 
-const CartItem: React.FC<{ 
+const CartItem: React.FC<{
   item: CartItemType;
   increaseQuantity: (id: number) => void;
   decreaseQuantity: (id: number) => void;
@@ -102,20 +105,20 @@ const CartItem: React.FC<{
           <Text style={styles.itemText}>₪ {item.price}</Text>
           <View style={styles.itemcontrolWrapper}>
             <TouchableOpacity onPress={() => removeItem(item.id)}>
-              <Ionicons name='trash-outline' size={20} color={'red'} />
-            </TouchableOpacity> 
-            <View style={styles.quantitycontrolWrapper}> 
-              <TouchableOpacity style={styles.quantitycontrol} onPress={() => decreaseQuantity(item.id)}> 
-                <Ionicons name='remove-outline' size={20} color={'black'} />
+              <Ionicons name="trash-outline" size={20} color={'red'} />
+            </TouchableOpacity>
+            <View style={styles.quantitycontrolWrapper}>
+              <TouchableOpacity style={styles.quantitycontrol} onPress={() => decreaseQuantity(item.id)}>
+                <Ionicons name="remove-outline" size={20} color={'black'} />
               </TouchableOpacity>
               <Text>{item.quantity}</Text>
-              <TouchableOpacity style={styles.quantitycontrol} onPress={() => increaseQuantity(item.id)}> 
-                <Ionicons name='add-outline' size={20} color={'black'} />
+              <TouchableOpacity style={styles.quantitycontrol} onPress={() => increaseQuantity(item.id)}>
+                <Ionicons name="add-outline" size={20} color={'black'} />
               </TouchableOpacity>
             </View>
             <TouchableOpacity>
-              <Ionicons name='heart-outline' size={20} color={'black'} />
-            </TouchableOpacity> 
+              <Ionicons name="heart-outline" size={20} color={'black'} />
+            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -145,7 +148,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   checkoutBtn: {
-    backgroundColor:Colors.primary,
+    backgroundColor: Colors.primary,
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',

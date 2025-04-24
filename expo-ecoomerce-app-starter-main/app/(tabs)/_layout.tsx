@@ -1,10 +1,24 @@
-import React, { useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Tabs } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
-import { View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '@/constants/Colors';
+import { View } from 'react-native';
+import AdminPanel from './AdminPanel';
 
 export default function TabLayout() {
+  const [isAdmin, setIsAdmin] = useState(false); // حالة للتحقق إذا كان المستخدم أدمن
+
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      const savedRole = await AsyncStorage.getItem('userRole');
+      console.log("Saved Role: ", savedRole); // طباعة قيمة الدور في الـ AsyncStorage
+      setIsAdmin(savedRole === 'admin'); // التحقق إذا كان المستخدم أدمن
+    };
+
+    checkAdminStatus();
+  }, []);
+
   return (
     <Tabs
       screenOptions={({ route }) => {
@@ -17,10 +31,11 @@ export default function TabLayout() {
           const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
             index: "home-outline",
             explore: "search-outline",
-            favorites: "heart-outline", // ✅ إضافة أيقونة المفضلة
+            favorites: "heart-outline", 
             notifications: "notifications-outline",
             cart: "cart-outline",
             profile: "person-outline",
+            AdminPanel: "settings-outline", // أيقونة لوحة التحكم للأدمن
           };
           return icons[route.name] || "help-circle-outline";
         }, [route.name]);
@@ -68,10 +83,13 @@ export default function TabLayout() {
     >
       <Tabs.Screen name="index" options={{ title: "Home" }} />
       <Tabs.Screen name="explore" options={{ title: "Explore" }} />
-      <Tabs.Screen name="favorites" options={{ title: "Favorites" }} /> {/* ✅ إضافة تبويب المفضلة */}
+      <Tabs.Screen name="favorites" options={{ title: "Favorites" }} />
       <Tabs.Screen name="notifications" options={{ title: "Notifications" }} />
       <Tabs.Screen name="cart" options={{ title: "Cart", tabBarBadge: 3 }} />
       <Tabs.Screen name="profile" options={{ title: "Profile" }} />
+      
+      {/* فقط إذا كان المستخدم أدمن، يظهر تبويب لوحة التحكم */}
+      {isAdmin && <Tabs.Screen name="AdminPanel" options={{ title: "Admin Panel" }} />}
     </Tabs>
   );
 }

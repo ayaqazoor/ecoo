@@ -1,21 +1,20 @@
 import { StyleSheet, Text, TouchableOpacity, View, Alert } from 'react-native';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import InputField from '@/components/InputField';
 import { Colors } from '@/constants/Colors';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/config/firebase'; // استيراد auth من ملف firebase.js
+import { auth, db } from '@/config/firebase';
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { FirebaseError } from 'firebase/app';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import OAuth from '@/components/OAuth';
-import { FirebaseError } from 'firebase/app'; // استيراد FirebaseError
-import { doc, getDoc, setDoc } from "firebase/firestore"; // استيراد Firestore
-import { db } from "@/config/firebase"; // استيراد db من ملف firebase.js
-
 
 interface UserData {
   email: string;
   createdAt: Date;
-  role: 'user' | 'admin'; // أو أي قيمة ممكنة لحقل role
+  role: 'user' | 'admin';
   settings: {
     darkMode: boolean;
     language: string;
@@ -23,10 +22,29 @@ interface UserData {
 }
 
 const SignInScreen = () => {
-  const [email, setEmail] = useState(''); // حفظ الإيميل
-  const [password, setPassword] = useState(''); // حفظ كلمة المرور
-  const [rememberMe, setRememberMe] = useState(false); // حالة التذكر
-  const [isAdmin, setIsAdmin] = useState(false); // حالة لتحديد إذا كان المستخدم أدمن
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // دالة تحميل البيانات من AsyncStorage لما تفتح الصفحة
+  useEffect(() => {
+    const loadRememberedData = async () => {
+      try {
+        const savedEmail = await AsyncStorage.getItem('rememberedEmail');
+        const savedPassword = await AsyncStorage.getItem('rememberedPassword');
+        const savedRememberMe = await AsyncStorage.getItem('rememberMe');
+
+        if (savedEmail) setEmail(savedEmail);
+        if (savedPassword) setPassword(savedPassword);
+        if (savedRememberMe === 'true') setRememberMe(true);
+      } catch (error) {
+        console.log("Failed to load remembered data:", error);
+      }
+    };
+
+    loadRememberedData();
+  }, []);
 
   // دالة لتسجيل الدخول
   const handleSignIn = async () => {
@@ -35,14 +53,14 @@ const SignInScreen = () => {
       const user = userCredential.user;
 
       if (user) {
-        const userRef = doc(db, "users", user.uid); 
+        const userRef = doc(db, "users", user.uid);
         const userSnap = await getDoc(userRef);
 
         if (!userSnap.exists()) {
           await setDoc(userRef, {
             email: user.email,
             createdAt: new Date(),
-            role: 'user', // إذا كان المستخدم عاديًا
+            role: 'user',
             settings: {
               darkMode: false,
               language: 'en',
@@ -50,17 +68,27 @@ const SignInScreen = () => {
           });
         }
 
-        // التحقق من دور المستخدم
-        const userData: UserData = userSnap.data() as UserData; // استخدام النوع هنا
-        if (userData.role === 'admin') {
-          setIsAdmin(true);  // إذا كان المستخدم أدمن، نغير القيمة لتكون true
+        const userData: UserData = userSnap.data() as UserData;
+        if (userData?.role === 'admin') {
+          setIsAdmin(true);
         } else {
-          setIsAdmin(false);  // إذا لم يكن أدمن
+          setIsAdmin(false);
         }
 
-        // بعد تسجيل الدخول بنجاح، انتقل إلى الصفحة الرئيسية أو لوحة التحكم
+        // حفظ بيانات الريميمبر مي إذا مفعل
+        if (rememberMe) {
+          await AsyncStorage.setItem('rememberedEmail', email);
+          await AsyncStorage.setItem('rememberedPassword', password);
+          await AsyncStorage.setItem('rememberMe', 'true');
+        } else {
+          // إذا مو مفعل احذف البيانات
+          await AsyncStorage.removeItem('rememberedEmail');
+          await AsyncStorage.removeItem('rememberedPassword');
+          await AsyncStorage.removeItem('rememberMe');
+        }
+
         Alert.alert("You have successfully logged in!");
-        router.replace("/(tabs)"); // الانتقال إلى الصفحة الرئيسية
+        router.replace("/(tabs)");
       } else {
         Alert.alert("Error: User does not exist");
       }
@@ -90,7 +118,6 @@ const SignInScreen = () => {
       <View style={styles.container}>
         <Text style={styles.title}>Login to Your Account</Text>
         
-       
         <InputField 
           placeholder="Email Address" 
           placeholderTextColor={Colors.gray}
@@ -126,12 +153,12 @@ const SignInScreen = () => {
         {/* زر تسجيل الدخول */}
         <TouchableOpacity 
           style={styles.btn} 
-          onPress={handleSignIn} // عند الضغط على الزر، نفذ دالة تسجيل الدخول
+          onPress={handleSignIn}
         >
           <Text style={styles.btnTxt}>Login</Text>
         </TouchableOpacity>
 
-        <OAuth /> {/* يمكن إضافة تسجيل الدخول باستخدام جوجل أو فيسبوك هنا */}
+        <OAuth />
 
         {/* رابط إنشاء حساب جديد */}
         <Text style={styles.loginTxt}>
@@ -141,7 +168,7 @@ const SignInScreen = () => {
           </Link>
         </Text>
 
-        {/* زر لوحة التحكم (يظهر فقط للأدمن) */}
+        {/* زر لوحة التحكم (للأدمن فقط) */}
         {isAdmin && (
           <TouchableOpacity 
             style={styles.adminBtn} 

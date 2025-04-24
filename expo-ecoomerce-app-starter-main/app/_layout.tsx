@@ -1,6 +1,7 @@
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import React from 'react';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
@@ -30,6 +31,8 @@ export default function RootLayout() {
   <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
   <Stack.Screen name="signin" options={{ presentation: 'modal' }} />
   <Stack.Screen name="signup" options={{ presentation: 'modal' }} />
+  <Stack.Screen name="checkout" options={{ headerShown: false }}/>
+
 </Stack>
 
     </GestureHandlerRootView>

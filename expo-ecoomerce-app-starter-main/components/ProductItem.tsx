@@ -10,11 +10,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 type Props = {
     item: ProductType;
     index: number;
+    productType:"sale" | "regular";
 };
 
 const width = Dimensions.get('window').width - 40;
 
-const ProductItem = ({ item, index }: Props) => {
+const ProductItem = ({ item, index, productType}: Props) => {
     const [isFavorite, setIsFavorite] = useState(false);
 
     useEffect(() => {
@@ -54,9 +55,13 @@ const ProductItem = ({ item, index }: Props) => {
 
     return (
         <Link 
-            href={{ pathname: "/product-details/[id]", params: { id: item.id.toString() } }} 
-            asChild
-        >
+            href={{
+                pathname:'/product-details/[id]',
+                params:{id:item.id, productType: productType},
+
+
+            }} asChild>
+        
             <TouchableOpacity>
                 <Animated.View 
                     style={styles.Container} 
