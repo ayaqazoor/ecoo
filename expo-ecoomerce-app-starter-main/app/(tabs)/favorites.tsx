@@ -48,7 +48,7 @@ const Favorites = () => {
     }
   };
 
-  const removeFavorite = async (id: number) => {
+  const removeFavorite = async (id: string) => {
     const updatedFavorites = favorites.filter((item) => item.id !== id);
     setFavorites(updatedFavorites);
     await AsyncStorage.setItem("favorites", JSON.stringify(updatedFavorites));

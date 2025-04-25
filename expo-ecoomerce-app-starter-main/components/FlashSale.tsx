@@ -1,7 +1,7 @@
-import { FlatList, StyleSheet, Text, TouchableOpacity, View , Image } from 'react-native'
-import React, { useEffect, useState } from 'react'
-import { Colors } from '@/constants/Colors'
-import { Ionicons } from '@expo/vector-icons'
+import { FlatList, StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Colors } from '@/constants/Colors';
+import { Ionicons } from '@expo/vector-icons';
 import ProductItem from './ProductItem';
 import { ProductType } from '@/types/type';
 
@@ -9,9 +9,8 @@ type Props = {
     products: ProductType[];
 };
 
-const FlashSale = ({products}: Props) => {
+const FlashSale = ({ products }: Props) => {
     const saleEndDate = new Date();
-    //saleEndDate.setFullYear(2025, 5, 19);
     saleEndDate.setDate(saleEndDate.getDate() + 2);
     saleEndDate.setHours(23, 59, 59);
 
@@ -56,7 +55,7 @@ const FlashSale = ({products}: Props) => {
                 <View style={styles.timerWrapper}>
                     <Text style={styles.title}>Flash Sale</Text>
                     <View style={styles.timer}>
-                        <Ionicons name='time-outline' size={16} color={Colors.black} />
+                        <Ionicons name="time-outline" size={16} color={Colors.black} />
                         <Text style={styles.timerTxt}>
                             {formatTime(timeUnits.days)}:{formatTime(timeUnits.hours)}:{formatTime(timeUnits.minutes)}:{formatTime(timeUnits.seconds)}
                         </Text>
@@ -66,15 +65,24 @@ const FlashSale = ({products}: Props) => {
                     <Text style={styles.titleBtn}>See All</Text>
                 </TouchableOpacity>
             </View>
-             <FlatList data={products} 
-                       horizontal
-                       showsHorizontalScrollIndicator={false}
-                       contentContainerStyle={{marginLeft: 20, paddingRight: 20}}
-                       keyExtractor={(item) => item.id?.toString()} renderItem={({item, index }) => (
-                        <View style={{marginRight:20 }}>
-                        <ProductItem index={index} item={item} />
+
+            {/* تحقق من وجود المنتجات */}
+            {products.length === 0 ? (
+                <Text style={styles.noProductsText}>No products available for Flash Sale</Text>
+            ) : (
+                <FlatList
+                    data={products}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ marginLeft: 20, paddingRight: 20 }}
+                    keyExtractor={(item) => item.id?.toString()}
+                    renderItem={({ item, index }) => (
+                        <View style={{ marginRight: 20 }}>
+                            <ProductItem index={index} item={item} productType="regular" />
                         </View>
-                       )}/>
+                    )}
+                />
+            )}
         </View>
     );
 };
@@ -89,7 +97,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         marginHorizontal: 20,
-        marginBottom: 20
+        marginBottom: 20,
     },
     titleBtn: {
         fontSize: 14,
@@ -119,5 +127,12 @@ const styles = StyleSheet.create({
     timerTxt: {
         color: Colors.black,
         fontWeight: '500',
+    },
+    noProductsText: {
+        fontSize: 16,
+        fontWeight: '500',
+        color: Colors.gray,
+        textAlign: 'center',
+        marginVertical: 20,
     },
 });

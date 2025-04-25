@@ -1,10 +1,12 @@
 export interface ProductType {
-  id: number;
+  id: string;
   title: string;
   price: number;
   description: string;
   images: string[];
-  category: Category;
+  category: string;
+  discount?: number;
+  originalPrice?: number;
 }
 
 interface Category {
@@ -20,15 +22,19 @@ export interface CategoryType {
 }
 
 export interface CartItemType {
-  id: number;
+  id: string;
+  productId: string;
   title: string;
   price: number;
   quantity: number;
   image: string;
+  productType?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface NotificationType {
-  id: number;
+  id: string;
   title: string;
   message: string;
   timestamp: string;

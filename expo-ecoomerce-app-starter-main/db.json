@@ -723,6 +723,38 @@
         "image": "https://i.imgur.com/QkIa5tT.jpeg"
       },
       "quantity": 1
+    },
+    {
+      "id": "16",
+      "title": "Palmers Cocoa Butter Formula Lotion",
+      "price": 73,
+      "description": "A luxurious body lotion that moisturizes and helps to improve skin elasticity. It contains cocoa butter and Vitamin E to deeply hydrate and soothe dry skin. Perfect for everyday use to leave skin feeling soft and smooth.",
+      "images": [
+        "https://i.imgur.com/k3QmHOu.jpeg",
+        "https://i.imgur.com/E4whwUs.jpeg"
+      ],
+      "category": {
+        "id": 1,
+        "name": "nuevo",
+        "image": "https://i.imgur.com/QkIa5tT.jpeg"
+      },
+      "quantity": 1
+    },
+    {
+      "id": "12",
+      "title": "Nature Republic Rose Water Toner",
+      "price": 48,
+      "description": "A refreshing toner that hydrates and balances your skin's pH. Infused with rose extract to calm irritation and leave your skin glowing. Ideal for prepping skin before moisturizing.",
+      "images": [
+        "https://i.imgur.com/CWCnFRN.jpeg",
+        "https://i.imgur.com/YBScdcw.jpeg"
+      ],
+      "category": {
+        "id": 1,
+        "name": "nuevo",
+        "image": "https://i.imgur.com/QkIa5tT.jpeg"
+      },
+      "quantity": 1
     }
   ],
   "notifications": [

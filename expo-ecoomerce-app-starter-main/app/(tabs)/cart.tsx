@@ -14,7 +14,7 @@ const CartScreen: React.FC = () => {
 
   const getCartData = useCallback(async () => {
     try {
-      const URL = 'http://192.168.112.177:8000/cart';
+      const URL = 'http://192.168.125.177:8000/cart';
       const response = await axios.get(URL);
       console.log('Cart Data response:', response.data);
 

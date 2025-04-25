@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 const TasksScreen = () => {
@@ -8,53 +9,69 @@ const TasksScreen = () => {
   const mainColor = '#F6EEEB';
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={[styles.header, { backgroundColor: '#FFB6C1' }]}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={24} color={mainColor} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Smart Girl 🎀</Text>
-        <View style={{ width: 24 }} />
-      </View>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <View style={[styles.header, { backgroundColor: '#FFB6C1' }]}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Ionicons name="chevron-back" size={24} color={mainColor} />
+          </TouchableOpacity>
+          <Text style={styles.title}>Smart Girl 🎀</Text>
+          <View style={{ width: 24 }} />
+        </View>
 
-      {/* Care Boxes */}
-      <View style={styles.careContainer}>
-        <TouchableOpacity style={styles.careBox} onPress={() => router.push('../routine/MorningCareScreen')}>
-          <Text style={styles.careText}>Morning Care 🌞</Text>
-        </TouchableOpacity>
+        {/* Care Boxes */}
+        <View style={styles.careContainer}>
+          <TouchableOpacity style={styles.careBox} onPress={() => router.push('../routine/MorningCareScreen')}>
+            <Text style={styles.careText}>Morning Care 🌞</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity style={styles.careBox} onPress={() => router.push('../routine/EveningCareScreen')}>
-          <Text style={styles.careText}>Evening Care 🌙</Text>
-        </TouchableOpacity>
+          <TouchableOpacity style={styles.careBox} onPress={() => router.push('../routine/EveningCareScreen')}>
+            <Text style={styles.careText}>Evening Care 🌙</Text>
+          </TouchableOpacity>
 
-        {/* Skin Tips Box */}
-        <TouchableOpacity style={styles.careBox} onPress={() => router.push('../routine/SkinTipsScreen')}>
-          <Text style={styles.careText}>Skin Tips 💖</Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity style={styles.careBox} onPress={() => router.push('../routine/SkinTipsScreen')}>
+            <Text style={styles.careText}>Skin Tips 💖</Text>
+          </TouchableOpacity>
+        </View>
 
-      {/* Floating Add Button */}
-      <TouchableOpacity style={[styles.addButton, { backgroundColor: mainColor }]}>
-        <Text style={styles.plus}>+</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        {/* Floating Add Button */}
+        <TouchableOpacity style={[styles.addButton, { backgroundColor: mainColor }]}>
+          <Text style={styles.plus}>+</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
-export default TasksScreen;
+// Hide default header from Expo Router
+export const unstable_settings = {
+  initialRouteName: 'TasksScreen',
+};
+
+const TasksScreenWrapper = () => {
+  return (
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <TasksScreen />
+    </>
+  );
+};
+
+export default TasksScreenWrapper;
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    paddingTop: 40,
+  },
+  container: {
+    paddingBottom: 100,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
-    paddingTop: 40,
+    padding: 20,
   },
   title: {
     color: '#fff',
@@ -63,24 +80,23 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   careContainer: {
-    flexDirection: 'column', // Aligning boxes vertically
-    justifyContent: 'flex-start', // Starting the alignment from the top
+    flexDirection: 'column',
+    justifyContent: 'flex-start',
     paddingHorizontal: 10,
-    flex: 1, // Take the remaining space of the screen
   },
   careBox: {
     backgroundColor: '#F6EEEB',
     paddingVertical: 20,
     paddingHorizontal: 15,
     borderRadius: 20,
-    width: '100%', // Full width of the screen
+    width: '100%',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 5,
     elevation: 4,
-    marginVertical: 10, // Space between boxes
+    marginVertical: 10,
   },
   careText: {
     color: '#000',

@@ -1,8 +1,7 @@
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import axios from 'axios';
-import { ProductType } from '@/types/type';
+import { ProductType, CartItemType } from '@/types/type';
 import ImageSlider from '@/components/ImageSlider';
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from '@/constants/Colors';
@@ -10,29 +9,60 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from 'expo-router';
 import { useHeaderHeight } from '@react-navigation/elements';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { doc, getDoc, collection, addDoc, updateDoc, getDocs, query, where } from 'firebase/firestore';
+import { db } from '@/config/firebase';
+import { getAuth } from 'firebase/auth';
 
-type Props = {};
-const ProductDetails = (props: Props) => {
+const ProductDetails = () => {
     const { id, productType } = useLocalSearchParams();
     const [product, setProduct] = useState<ProductType | null>(null);
     const [isFavorite, setIsFavorite] = useState(false);
-    const [addedToCart, setAddedToCart] = useState(false);
+    const [loading, setLoading] = useState(true);
     const router = useRouter();
+    const headerHeight = useHeaderHeight();
 
     useEffect(() => {
-        getProductDetails();
-        checkIfFavorite();
-    }, []);
+        if (id && productType) {
+            getProductDetails();
+            checkIfFavorite();
+        }
+    }, [id, productType]);
 
     const getProductDetails = async () => {
-        const URL = productType === "sale"
-            ?`http://192.168.112.177:8000/saleProducts/${id}`
-             :`http://192.168.112.177:8000/products/${id}`;
         try {
-            const response = await axios.get(URL);
-            setProduct(response.data);
+            setLoading(true);
+            console.log('Fetching product details for:', { id, productType });
+            
+            const collectionName = productType === "sale" ? "saleProducts" : "products";
+            const docRef = doc(db, collectionName, id as string);
+            const docSnap = await getDoc(docRef);
+            
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                console.log('Product data:', data);
+                
+                const productData: ProductType = {
+                    id: docSnap.id,
+                    title: data.title || '',
+                    price: Number(data.price) || 0,
+                    description: data.description || '',
+                    images: Array.isArray(data.images) ? data.images : [],
+                    category: data.category || '',
+                    discount: data.discount || 0,
+                    originalPrice: data.originalPrice || Number(data.price) || 0
+                };
+                
+                console.log('Processed product data:', productData);
+                setProduct(productData);
+            } else {
+                console.log("No such document!");
+                setProduct(null);
+            }
         } catch (error) {
             console.error('Error fetching product details:', error);
+            setProduct(null);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -41,7 +71,7 @@ const ProductDetails = (props: Props) => {
             const storedFavorites = await AsyncStorage.getItem("favorites");
             if (storedFavorites) {
                 const favoritesArray: ProductType[] = JSON.parse(storedFavorites);
-                const isFav = favoritesArray.some(item => item.id === Number(id));
+                const isFav = favoritesArray.some(item => item.id === product?.id);
                 setIsFavorite(isFav);
             }
         } catch (error) {
@@ -55,7 +85,7 @@ const ProductDetails = (props: Props) => {
             let favoritesArray: ProductType[] = storedFavorites ? JSON.parse(storedFavorites) : [];
 
             if (isFavorite) {
-                favoritesArray = favoritesArray.filter(item => item.id !== Number(id));
+                favoritesArray = favoritesArray.filter(item => item.id !== product?.id);
             } else {
                 if (product) {
                     favoritesArray.push(product);
@@ -73,16 +103,79 @@ const ProductDetails = (props: Props) => {
         if (!product) return;
 
         try {
-            const URL = 'http://192.168.112.177:8000/cart';
-            await axios.post(URL, { ...product, quantity: 1 });
-            setAddedToCart(true);
+            const auth = getAuth();
+            const user = auth.currentUser;
+            
+            if (!user) {
+                console.log('User not logged in');
+                router.push('/signin');
+                return;
+            }
+
+            console.log('Adding product to cart:', product);
+            const cartRef = collection(db, 'carts');
+            const q = query(cartRef, 
+                where('userId', '==', user.uid), 
+                where('productId', '==', product.id)
+            );
+            const querySnapshot = await getDocs(q);
+
+            if (querySnapshot.empty) {
+                // Add new item to cart
+                const cartItem = {
+                    userId: user.uid,
+                    productId: product.id,
+                    title: product.title,
+                    price: product.price,
+                    image: product.images[0],
+                    quantity: 1,
+                    createdAt: new Date(),
+                    productType: productType
+                };
+                
+                console.log('Adding new cart item:', cartItem);
+                const docRef = await addDoc(cartRef, cartItem);
+                console.log('New cart item added with ID:', docRef.id);
+            } else {
+                // Update existing item quantity
+                const docRef = doc(db, 'carts', querySnapshot.docs[0].id);
+                const currentQuantity = querySnapshot.docs[0].data().quantity;
+                console.log('Updating existing cart item quantity:', currentQuantity + 1);
+                await updateDoc(docRef, {
+                    quantity: currentQuantity + 1,
+                    updatedAt: new Date()
+                });
+            }
+
+            Alert.alert('Success', 'Product added to cart successfully');
             router.push('/cart');
         } catch (error) {
             console.error('Error adding to cart:', error);
+            Alert.alert('Error', 'Failed to add product to cart. Please try again.');
         }
     };
 
-    const headerHeight = useHeaderHeight();
+    if (loading) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+            </View>
+        );
+    }
+
+    if (!product) {
+        return (
+            <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>Product not found</Text>
+                <TouchableOpacity 
+                    style={styles.retryButton}
+                    onPress={getProductDetails}
+                >
+                    <Text style={styles.retryText}>Try Again</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
 
     return (
         <>
@@ -91,85 +184,108 @@ const ProductDetails = (props: Props) => {
                 headerTransparent: true,
                 headerLeft: () => (
                     <TouchableOpacity onPress={() => router.back()}>
-                        <Ionicons name="arrow-back" size={24} color={Colors.black} />
+                        <Ionicons name="arrow-back" size={28} color={Colors.primary} />
                     </TouchableOpacity>
                 ),
                 headerRight: () => (
-                    <TouchableOpacity>
-                        <Ionicons name="cart-outline" size={24} color={Colors.black} />
+                    <TouchableOpacity onPress={() => router.push('/cart')}>
+                        <Ionicons name="cart-outline" size={28} color={Colors.primary} />
                     </TouchableOpacity>
                 ),
             }} />
             <ScrollView style={{ marginTop: headerHeight, marginBottom: 60 }}>
                 <View>
-                    {product && product.images &&
+                    {product.images && product.images.length > 0 && (
                         <Animated.View entering={FadeInDown.delay(300).duration(500)}>
                             <ImageSlider imageList={product.images} />
-                        </Animated.View>}
-                    {product && (
-                        <View style={styles.container}>
-                            <Animated.View style={styles.ratingWrapper} entering={FadeInDown.delay(500).duration(500)}>
-                                <View style={styles.ratingSection}>
-                                    <Ionicons name="star" size={20} color={"#D4AF37"} />
-                                    <Text style={styles.rating}>4.7</Text>
-                                </View>
-                                <TouchableOpacity onPress={toggleFavorite}>
-                                    <Ionicons
-                                        name={isFavorite ? "heart" : "heart-outline"}
-                                        size={24}
-                                        color={isFavorite ? "red" : Colors.black}
-                                    />
-                                </TouchableOpacity>
-                            </Animated.View>
-
-                            <Animated.Text style={styles.productTitle} entering={FadeInDown.delay(700).duration(500)}>{product.title}</Animated.Text>
-
-                            <Animated.View style={styles.priceWrapper} entering={FadeInDown.delay(900).duration(500)}>
-                                <Text style={styles.productPrice}>₪ {product.price.toFixed(2)}</Text>
-                                <Text style={styles.oldPrice}>₪ {(product.price * 1.2).toFixed(2)}</Text>
-
-                                <View style={styles.discountBox}>
-                                    <Text style={styles.discountText}>-6%</Text>
-                                </View>
-                            </Animated.View>
-
-                            <Animated.Text style={styles.description}
-                                entering={FadeInDown.delay(1100).duration(500)}>{product.description}</Animated.Text>
-
-                            <TouchableOpacity
-                                style={[styles.cartButton, addedToCart && styles.cartButtonAdded]}
-                                onPress={addToCart}
-                                disabled={addedToCart}
-                            >
-                                <Animated.Text
-                                    style={styles.cartButtonText}
-                                    entering={FadeInDown.delay(1100).duration(500)}
-                                >
-                                    {addedToCart ? 'Added to Cart' : 'ADD TO CART'}
-                                </Animated.Text>
-                            </TouchableOpacity>
-                        </View>
+                        </Animated.View>
                     )}
+                    
+                    <View style={styles.container}>
+                        <Animated.View style={styles.ratingWrapper} entering={FadeInDown.delay(500).duration(500)}>
+                            <View style={styles.ratingSection}>
+                                <Ionicons name="star" size={20} color={"#D4AF37"} />
+                                <Text style={styles.rating}>4.7</Text>
+                            </View>
+                            <TouchableOpacity onPress={toggleFavorite}>
+                                <Ionicons
+                                    name={isFavorite ? "heart" : "heart-outline"}
+                                    size={24}
+                                    color={isFavorite ? "red" : Colors.black}
+                                />
+                            </TouchableOpacity>
+                        </Animated.View>
+
+                        <Animated.Text style={styles.productTitle} entering={FadeInDown.delay(700).duration(500)}>
+                            {product.title}
+                        </Animated.Text>
+
+                        <Animated.View style={styles.priceWrapper} entering={FadeInDown.delay(900).duration(500)}>
+                            <Text style={styles.productPrice}>₪ {product.price.toFixed(2)}</Text>
+                            {product.discount && product.discount > 0 && product.originalPrice && (
+                                <>
+                                    <Text style={styles.oldPrice}>₪ {product.originalPrice.toFixed(2)}</Text>
+                                    <View style={styles.discountBox}>
+                                        <Text style={styles.discountText}>-{product.discount}%</Text>
+                                    </View>
+                                </>
+                            )}
+                        </Animated.View>
+
+                        <Animated.Text style={styles.description} entering={FadeInDown.delay(1100).duration(500)}>
+                            {product.description}
+                        </Animated.Text>
+
+                        <TouchableOpacity
+                            style={styles.addToCartButton}
+                            onPress={addToCart}
+                        >
+                            <Text style={styles.addToCartText}>Add to Cart</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </ScrollView>
         </>
     );
 };
 
-export default ProductDetails;
-
 const styles = StyleSheet.create({
-    scrollContainer: {
-        flexGrow: 1,
-        paddingBottom: 20,
-    },
     container: {
+        padding: 20,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: Colors.white,
+    },
+    errorContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: Colors.white,
+        padding: 20,
+    },
+    errorText: {
+        fontSize: 18,
+        color: Colors.black,
+        marginBottom: 20,
+    },
+    retryButton: {
+        backgroundColor: Colors.primary,
         paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 8,
+    },
+    retryText: {
+        color: Colors.white,
+        fontSize: 16,
+        fontWeight: 'bold',
     },
     ratingWrapper: {
         flexDirection: 'row',
-        alignItems: 'center',
         justifyContent: 'space-between',
+        alignItems: 'center',
         marginBottom: 10,
     },
     ratingSection: {
@@ -179,105 +295,58 @@ const styles = StyleSheet.create({
     rating: {
         marginLeft: 5,
         fontSize: 16,
-        fontWeight: "bold",
+        color: Colors.gray,
     },
     productTitle: {
-        fontSize: 20,
-        fontWeight: "bold",
-        marginBottom: 5,
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 10,
+        color: Colors.black,
     },
     priceWrapper: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-        marginVertical: 10,
+        marginBottom: 15,
     },
     productPrice: {
-        fontSize: 17,
-        fontWeight: "bold",
-        color: "#E65100",
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: Colors.primary,
+        marginRight: 10,
     },
     oldPrice: {
-        fontSize: 16,
-        fontWeight: '400',
-        textDecorationLine: 'line-through',
+        fontSize: 18,
         color: Colors.gray,
+        textDecorationLine: 'line-through',
+        marginRight: 10,
     },
     discountBox: {
-        backgroundColor: "white",
-        borderColor: "#E65100",
-        borderWidth: 1,
-        borderRadius: 5,
-        paddingVertical: 1,
-        paddingHorizontal: 1,
+        backgroundColor: Colors.primary,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 4,
     },
     discountText: {
-        fontSize: 16,
-        fontWeight: "bold",
-        color: "#E65100",
+        color: 'white',
+        fontWeight: 'bold',
     },
     description: {
-        marginTop: 10,
         fontSize: 16,
-        fontWeight: '400',
-        color: Colors.black,
-        letterSpacing: 0.6,
-        lineHeight: 20,
+        color: Colors.gray,
+        lineHeight: 24,
+        marginBottom: 20,
     },
-    productVariationWrapper: {
-        flexDirection: 'row',
-        marginTop: 20,
-        flexWrap: 'wrap',
-    },
-    productVariationType: {
-        width: '50%',
-        gap: 5,
-        marginBottom: 10,
-    },
-    productVariationTitle: {
-        fontSize: 16,
-        fontWeight: '500',
-        color: Colors.black,
-    },
-    cartButton: {
+    addToCartButton: {
         backgroundColor: Colors.primary,
-        paddingVertical: 12,
-        borderRadius: 5,
+        padding: 15,
+        borderRadius: 10,
         alignItems: 'center',
-        marginTop: 20,
     },
-    cartButtonAdded: {
-        backgroundColor: 'gray',
-    },
-    cartButtonText: {
+    addToCartText: {
         color: 'white',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    productVariationValueWrapper: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 5,
-        flexWrap: 'wrap',
-    },
-    productVariationColorValue: {
-        width: 30,
-        height: 30,
-        borderRadius: 15,
-    },
-    productVariationSizeValue: {
-        width: 50,
-        height: 30,
-        borderRadius: 5,
-        backgroundColor: Colors.extraLightGray,
-        justifyContent: "center",
-        alignItems: "center",
-        borderColor: Colors.lightGray,
-        borderWidth: 1,
-    },
-    productVariationSizeValueText: {
-        fontSize: 12,
-        fontWeight: "500",
-        color: Colors.black,
+        fontSize: 18,
+        fontWeight: 'bold',
     },
 });
+
+export default ProductDetails;
