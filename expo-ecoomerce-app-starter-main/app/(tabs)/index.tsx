@@ -10,7 +10,7 @@ import ProductList from '@/components/ProductList';
 import Categories from '@/components/Categories';
 import FlashSale from '@/components/FlashSale';
 import { ScrollView } from 'react-native-gesture-handler';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -20,6 +20,7 @@ const HomeScreen = (props: Props) => {
   const [products, setProducts] = useState<ProductType[]>([]);
   const [categories, setCategories] = useState<CategoryType[]>([]);
   const [saleProducts, setSaleProducts] = useState<ProductType[]>([]);
+  const [flashSaleProducts, setFlashSaleProducts] = useState<ProductType[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -40,7 +41,8 @@ const HomeScreen = (props: Props) => {
       await Promise.all([
         getProducts(),
         getCategories(),
-        getSaleProducts()
+        getSaleProducts(),
+        loadFlashSaleProducts()
       ]);
       console.log('All data fetched successfully');
     } catch (error) {
@@ -73,7 +75,10 @@ const HomeScreen = (props: Props) => {
           price: Number(data.price) || 0,
           description: data.description || 'No description available',
           images: Array.isArray(data.images) ? data.images : [],
-          category: data.category || 'Uncategorized'
+          category: data.category || 'Uncategorized',
+          categoryId: String(data.categoryId || '0'),
+          discount: Number(data.discount) || 0,
+          originalPrice: Number(data.originalPrice) || Number(data.price) || 0
         } as ProductType;
       });
 
@@ -125,7 +130,10 @@ const HomeScreen = (props: Props) => {
           price: Number(data.price) || 0,
           description: data.description || 'No description available',
           images: Array.isArray(data.images) ? data.images : [],
-          category: data.category || 'Uncategorized'
+          category: data.category || 'Uncategorized',
+          categoryId: String(data.categoryId || '0'),
+          discount: Number(data.discount) || 0,
+          originalPrice: Number(data.originalPrice) || Number(data.price) || 0
         } as ProductType;
       });
 
@@ -136,6 +144,34 @@ const HomeScreen = (props: Props) => {
     }
   };
 
+  const loadFlashSaleProducts = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, 'saleProducts'));
+      const productsList: ProductType[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data && data.images && data.images.length > 0) {
+          productsList.push({
+            id: doc.id,
+            title: String(data.title || ''),
+            price: Number(data.price || 0),
+            description: String(data.description || ''),
+            images: Array.isArray(data.images) ? data.images : [],
+            category: String(data.category || ''),
+            categoryId: String(data.categoryId || ''),
+            discount: Number(data.discount || 0),
+            originalPrice: Number(data.originalPrice || data.price || 0)
+          });
+        }
+      });
+      setFlashSaleProducts(productsList);
+    } catch (error) {
+      console.error('Error fetching flash sale products:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const filteredProducts = products.filter(product =>
     product.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -143,6 +179,44 @@ const HomeScreen = (props: Props) => {
   const filteredSaleProducts = saleProducts.filter(product =>
     product.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const renderFlashSaleItem = ({ item }: { item: ProductType }) => {
+    const originalPrice = item.originalPrice || item.price;
+    const discount = 15; // Fixed 15% discount
+    const discountedPrice = originalPrice - (originalPrice * (discount / 100));
+
+    return (
+      <TouchableOpacity
+        style={styles.flashSaleItem}
+        onPress={() => router.push(`/product-details/${item.id}?productType=sale`)}
+      >
+        {item.images && item.images.length > 0 ? (
+          <Image
+            source={{ uri: item.images[0] }}
+            style={styles.flashSaleImage}
+          />
+        ) : (
+          <View style={[styles.flashSaleImage, { backgroundColor: Colors.lightGray }]} />
+        )}
+        <View style={styles.flashSaleInfo}>
+          <Text style={styles.flashSaleTitle} numberOfLines={2}>
+            {item.title}
+          </Text>
+          <View style={styles.priceContainer}>
+            <Text style={styles.currentPrice}>
+              ₪{discountedPrice.toFixed(2)}
+            </Text>
+            <Text style={styles.originalPrice}>
+              ₪{originalPrice.toFixed(2)}
+            </Text>
+            <View style={styles.discountBadge}>
+              <Text style={styles.discountText}>-{discount}%</Text>
+            </View>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   if (isLoading) {
     return (
@@ -179,7 +253,24 @@ const HomeScreen = (props: Props) => {
           </View>
 
           <View style={styles.sectionContainer}>
-            <FlashSale products={filteredSaleProducts} />
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Flash Sale</Text>
+              <TouchableOpacity onPress={() => router.push('/flashSale')}>
+                <Text style={styles.seeAllText}>See All</Text>
+              </TouchableOpacity>
+            </View>
+            {isLoading ? (
+              <ActivityIndicator size="large" color={Colors.primary} />
+            ) : (
+              <FlatList
+                data={flashSaleProducts}
+                renderItem={renderFlashSaleItem}
+                keyExtractor={(item) => item.id}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.flashSaleList}
+              />
+            )}
           </View>
 
           <View style={styles.sectionContainer}>
@@ -346,8 +437,62 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
   },
-  
-  
+  flashSaleItem: {
+    width: 150,
+    marginRight: 12,
+    backgroundColor: Colors.white,
+    borderRadius: 8,
+    padding: 8,
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  flashSaleImage: {
+    width: '100%',
+    height: 120,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  flashSaleInfo: {
+    flex: 1,
+  },
+  flashSaleTitle: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: Colors.black,
+    marginBottom: 4,
+  },
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  currentPrice: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: Colors.primary,
+  },
+  originalPrice: {
+    fontSize: 10,
+    color: Colors.gray,
+    textDecorationLine: 'line-through',
+  },
+  discountBadge: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  discountText: {
+    color: Colors.white,
+    fontWeight: 'bold',
+    fontSize: 10,
+  },
+  flashSaleList: {
+    paddingHorizontal: 16,
+  },
 });
 
 export default HomeScreen;

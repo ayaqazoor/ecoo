@@ -60,6 +60,59 @@ const ExploreScreen = () => {
     getCategories();
   }, []);
 
+  const renderCategoryCard = ({ item }: { item: CategoryType }) => {
+    return (
+      <TouchableOpacity
+        style={styles.categoryCard}
+        onPress={() => {
+          switch (item.name) {
+            case 'Skin Care':
+              router.push('/skinCare');
+              break;
+            case 'Hair Care':
+              router.push('/hairCare');
+              break;
+            case 'Makeup':
+              router.push('/makeup' as any);
+              break;
+            case 'Fragrance':
+              router.push('/fragrance' as any);
+              break;
+            case 'Body Care':
+              router.push('/bodyCare' as any);
+              break;
+            case 'Men':
+              router.push('/men' as any);
+              break;
+            case 'Perfumes':
+              router.push('/perfumes' as any);
+              break;
+            case 'Hand Bags':
+              router.push('/handBags' as any);
+              break;
+            case 'Accessories':
+              router.push('/accessories' as any);
+              break;
+            case 'Watches':
+              router.push('/watches' as any);
+              break;
+            case 'Gift':
+              router.push('/gift' as any);
+              break;
+            default:
+              break;
+          }
+        }}
+      >
+        <Image
+          source={{ uri: item.image }}
+          style={styles.categoryImage}
+        />
+        <Text style={styles.categoryTitle}>{item.name}</Text>
+      </TouchableOpacity>
+    );
+  };
+
   if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
@@ -114,20 +167,7 @@ const ExploreScreen = () => {
                 colors={[Colors.primary]}
               />
             }
-            renderItem={({ item, index }) => (
-              <Animated.View 
-                style={styles.cardWrapper}
-                entering={FadeInDown.delay(300 + index * 100).duration(500)}
-              >
-                <View style={styles.card}>
-                  <Image
-                    source={{ uri: item.image }}
-                    style={styles.categoryImage}
-                  />
-                  <Text style={styles.categoryName}>{item.name}</Text>
-                </View>
-              </Animated.View>
-            )}
+            renderItem={renderCategoryCard}
           />
         </View>
       </View>
@@ -245,7 +285,31 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   contentContainer: {
+    flex: 1,
     paddingHorizontal: 20,
     paddingTop: 20,
+    paddingBottom: 20,
+  },
+  categoryCard: {
+    width: CARD_WIDTH,
+    marginBottom: 20,
+    backgroundColor: Colors.extraLightGray,
+    borderRadius: 15,
+    padding: 10,
+    alignItems: 'center',
+    shadowColor: Colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  categoryTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.black,
+    textAlign: 'center',
   },
 });

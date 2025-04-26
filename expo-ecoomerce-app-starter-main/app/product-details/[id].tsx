@@ -33,33 +33,67 @@ const ProductDetails = () => {
             setLoading(true);
             console.log('Fetching product details for:', { id, productType });
             
+            if (!id) {
+                Alert.alert('Error', 'Product ID is missing');
+                setProduct(null);
+                return;
+            }
+
             const collectionName = productType === "sale" ? "saleProducts" : "products";
             const docRef = doc(db, collectionName, id as string);
             const docSnap = await getDoc(docRef);
             
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                console.log('Product data:', data);
+                console.log('Raw product data:', data);
                 
+                // Set fixed discount percentage of 15% for sale products
+                const discountPercent = productType === "sale" ? 15 : 0;
+                
+                // Calculate discounted price
+                const originalPrice = Number(data.originalPrice) || Number(data.price) || 0;
+                const discountedPrice = productType === "sale" 
+                    ? originalPrice - (originalPrice * (discountPercent / 100))
+                    : originalPrice;
+                
+                // Ensure all required fields exist with default values and are strings
                 const productData: ProductType = {
                     id: docSnap.id,
-                    title: data.title || '',
-                    price: Number(data.price) || 0,
-                    description: data.description || '',
-                    images: Array.isArray(data.images) ? data.images : [],
-                    category: data.category || '',
-                    discount: data.discount || 0,
-                    originalPrice: data.originalPrice || Number(data.price) || 0
+                    title: String(data.title || 'No title available'),
+                    price: discountedPrice, // Use discounted price for sale products
+                    description: String(data.description || 'No description available'),
+                    images: Array.isArray(data.images) ? data.images.map(String) : [],
+                    category: String(data.category || 'Uncategorized'),
+                    discount: discountPercent,
+                    originalPrice: originalPrice
                 };
                 
                 console.log('Processed product data:', productData);
                 setProduct(productData);
+                
+                // Check if product is in favorites
+                checkIfFavorite();
             } else {
                 console.log("No such document!");
+                Alert.alert('Error', 'Product not found');
                 setProduct(null);
             }
         } catch (error) {
             console.error('Error fetching product details:', error);
+            Alert.alert(
+                'Error',
+                'Failed to load product details. Please try again.',
+                [
+                    {
+                        text: 'Try Again',
+                        onPress: () => getProductDetails()
+                    },
+                    {
+                        text: 'Cancel',
+                        style: 'cancel'
+                    }
+                ]
+            );
             setProduct(null);
         } finally {
             setLoading(false);
@@ -179,79 +213,119 @@ const ProductDetails = () => {
 
     return (
         <>
-            <Stack.Screen options={{
-                title: "Product Details",
-                headerTransparent: true,
-                headerLeft: () => (
-                    <TouchableOpacity onPress={() => router.back()}>
-                        <Ionicons name="arrow-back" size={28} color={Colors.primary} />
-                    </TouchableOpacity>
-                ),
-                headerRight: () => (
-                    <TouchableOpacity onPress={() => router.push('/cart')}>
-                        <Ionicons name="cart-outline" size={28} color={Colors.primary} />
-                    </TouchableOpacity>
-                ),
-            }} />
-            <ScrollView style={{ marginTop: headerHeight, marginBottom: 60 }}>
-                <View>
-                    {product.images && product.images.length > 0 && (
-                        <Animated.View entering={FadeInDown.delay(300).duration(500)}>
-                            <ImageSlider imageList={product.images} />
-                        </Animated.View>
-                    )}
-                    
-                    <View style={styles.container}>
-                        <Animated.View style={styles.ratingWrapper} entering={FadeInDown.delay(500).duration(500)}>
-                            <View style={styles.ratingSection}>
-                                <Ionicons name="star" size={20} color={"#D4AF37"} />
-                                <Text style={styles.rating}>4.7</Text>
-                            </View>
-                            <TouchableOpacity onPress={toggleFavorite}>
-                                <Ionicons
-                                    name={isFavorite ? "heart" : "heart-outline"}
-                                    size={24}
-                                    color={isFavorite ? "red" : Colors.black}
-                                />
-                            </TouchableOpacity>
-                        </Animated.View>
-
-                        <Animated.Text style={styles.productTitle} entering={FadeInDown.delay(700).duration(500)}>
-                            {product.title}
-                        </Animated.Text>
-
-                        <Animated.View style={styles.priceWrapper} entering={FadeInDown.delay(900).duration(500)}>
-                            <Text style={styles.productPrice}>₪ {product.price.toFixed(2)}</Text>
-                            {product.discount && product.discount > 0 && product.originalPrice && (
-                                <>
-                                    <Text style={styles.oldPrice}>₪ {product.originalPrice.toFixed(2)}</Text>
-                                    <View style={styles.discountBox}>
-                                        <Text style={styles.discountText}>-{product.discount}%</Text>
-                                    </View>
-                                </>
-                            )}
-                        </Animated.View>
-
-                        <Animated.Text style={styles.description} entering={FadeInDown.delay(1100).duration(500)}>
-                            {product.description}
-                        </Animated.Text>
-
-                        <TouchableOpacity
-                            style={styles.addToCartButton}
-                            onPress={addToCart}
+            <Stack.Screen 
+                options={{ 
+                    headerShown: true,
+                    headerTitle: '',
+                    headerLeft: () => (
+                        <TouchableOpacity 
+                            style={{ marginLeft: 10 }}
+                            onPress={() => router.back()}
                         >
-                            <Text style={styles.addToCartText}>Add to Cart</Text>
+                            <Ionicons name="arrow-back" size={28} color={Colors.primary} />
+                        </TouchableOpacity>
+                    ),
+                    headerRight: () => (
+                        <TouchableOpacity 
+                            style={{ marginRight: 10 }}
+                            onPress={() => router.push('/cart')}
+                        >
+                            <Ionicons name="cart-outline" size={28} color={Colors.primary} />
+                        </TouchableOpacity>
+                    ),
+                    headerStyle: {
+                        backgroundColor: Colors.white,
+                    },
+                }} 
+            />
+            <View style={[styles.container, { marginTop: 0 }]}>
+                {loading ? (
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color={Colors.primary} />
+                    </View>
+                ) : product && product.id ? (
+                    <ScrollView style={styles.contentContainer}>
+                        {product.images && product.images.length > 0 && (
+                            <ImageSlider imageList={product.images} />
+                        )}
+                        
+                        <View style={styles.detailsContainer}>
+                            <View style={styles.titleContainer}>
+                                <Text style={styles.productTitle}>{String(product.title || 'No title')}</Text>
+                                <TouchableOpacity onPress={toggleFavorite}>
+                                    <Ionicons
+                                        name={isFavorite ? "heart" : "heart-outline"}
+                                        size={24}
+                                        color={isFavorite ? "red" : Colors.black}
+                                    />
+                                </TouchableOpacity>
+                            </View>
+
+                            <View style={styles.priceContainer}>
+                                {productType === "sale" ? (
+                                    <>
+                                        <Text style={styles.currentPrice}>
+                                            ₪{((product.originalPrice || 0) - ((product.originalPrice || 0) * (product.discount || 0) / 100)).toFixed(2)}
+                                        </Text>
+                                        <Text style={styles.originalPrice}>
+                                            ₪{(product.originalPrice || 0).toFixed(2)}
+                                        </Text>
+                                        <View style={styles.discountBadge}>
+                                            <Text style={styles.discountText}>-{product.discount}%</Text>
+                                        </View>
+                                    </>
+                                ) : (
+                                    <Text style={styles.currentPrice}>
+                                        ₪{(product.price || 0).toFixed(2)}
+                                    </Text>
+                                )}
+                            </View>
+
+                            <View style={styles.discountContainer}>
+                                <Text style={styles.discountTitle}>Discount</Text>
+                                <Text style={styles.discountValue}>
+                                    {productType === "sale" ? `${product.discount}%` : '0%'}
+                                </Text>
+                            </View>
+
+                            <View style={styles.descriptionContainer}>
+                                <Text style={styles.descriptionTitle}>Description</Text>
+                                <Text style={styles.descriptionText}>{String(product.description || 'No description available')}</Text>
+                            </View>
+
+                            <View style={styles.categoryContainer}>
+                                <Text style={styles.categoryTitle}>Category</Text>
+                                <Text style={styles.categoryText}>{String(product.category || 'Uncategorized')}</Text>
+                            </View>
+
+                            <TouchableOpacity
+                                style={styles.addToCartButton}
+                                onPress={addToCart}
+                            >
+                                <Text style={styles.addToCartText}>Add to Cart</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </ScrollView>
+                ) : (
+                    <View style={styles.errorContainer}>
+                        <Text style={styles.errorText}>Product not found</Text>
+                        <TouchableOpacity
+                            style={styles.retryButton}
+                            onPress={getProductDetails}
+                        >
+                            <Text style={styles.retryText}>Try Again</Text>
                         </TouchableOpacity>
                     </View>
-                </View>
-            </ScrollView>
+                )}
+            </View>
         </>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
-        padding: 20,
+        flex: 1,
+        backgroundColor: Colors.white,
     },
     loadingContainer: {
         flex: 1,
@@ -282,59 +356,95 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
     },
-    ratingWrapper: {
+    contentContainer: {
+        flex: 1,
+    },
+    detailsContainer: {
+        padding: 20,
+    },
+    titleContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 10,
-    },
-    ratingSection: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    rating: {
-        marginLeft: 5,
-        fontSize: 16,
-        color: Colors.gray,
+        marginBottom: 15,
     },
     productTitle: {
         fontSize: 24,
         fontWeight: 'bold',
-        marginBottom: 10,
         color: Colors.black,
+        flex: 1,
     },
-    priceWrapper: {
+    priceContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 15,
+        marginBottom: 20,
+        gap: 10,
     },
-    productPrice: {
+    currentPrice: {
         fontSize: 24,
         fontWeight: 'bold',
         color: Colors.primary,
-        marginRight: 10,
     },
-    oldPrice: {
-        fontSize: 18,
+    originalPrice: {
+        fontSize: 16,
         color: Colors.gray,
         textDecorationLine: 'line-through',
-        marginRight: 10,
     },
-    discountBox: {
+    discountBadge: {
         backgroundColor: Colors.primary,
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 4,
     },
     discountText: {
-        color: 'white',
+        color: Colors.white,
         fontWeight: 'bold',
     },
-    description: {
+    discountContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+        padding: 15,
+        backgroundColor: Colors.lightGray,
+        borderRadius: 10,
+    },
+    discountTitle: {
+        fontSize: 16,
+        color: Colors.black,
+        fontWeight: 'bold',
+    },
+    discountValue: {
+        fontSize: 16,
+        color: Colors.primary,
+        fontWeight: 'bold',
+    },
+    descriptionContainer: {
+        marginBottom: 20,
+    },
+    descriptionTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: Colors.black,
+        marginBottom: 10,
+    },
+    descriptionText: {
         fontSize: 16,
         color: Colors.gray,
         lineHeight: 24,
+    },
+    categoryContainer: {
         marginBottom: 20,
+    },
+    categoryTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: Colors.black,
+        marginBottom: 10,
+    },
+    categoryText: {
+        fontSize: 16,
+        color: Colors.gray,
     },
     addToCartButton: {
         backgroundColor: Colors.primary,
@@ -343,7 +453,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     addToCartText: {
-        color: 'white',
+        color: Colors.white,
         fontSize: 18,
         fontWeight: 'bold',
     },

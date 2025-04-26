@@ -5,8 +5,9 @@ export interface ProductType {
   description: string;
   images: string[];
   category: string;
-  discount?: number;
-  originalPrice?: number;
+  categoryId: string;
+  discount: number;
+  originalPrice: number;
 }
 
 interface Category {
