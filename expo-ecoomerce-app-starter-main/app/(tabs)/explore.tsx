@@ -88,7 +88,7 @@ const ExploreScreen = () => {
               router.push('/perfumes' as any);
               break;
             case 'Hand Bags':
-              router.push('/handBags' as any);
+              router.push('/handBag' as any);
               break;
             case 'Accessories':
               router.push('/accessories' as any);

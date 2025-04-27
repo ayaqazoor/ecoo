@@ -1,176 +1,503 @@
-import React, { useState } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity,
-  StyleSheet, Alert, FlatList, KeyboardTypeOptions
-} from 'react-native';
-import { useNavigation, useLocalSearchParams } from 'expo-router';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { Colors } from '@/constants/Colors';
-import DropDownPicker from 'react-native-dropdown-picker';
-import { auth, db } from '@/config/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { Ionicons } from '@expo/vector-icons';
+import { collection, addDoc } from 'firebase/firestore';
+import { db } from '@/config/firebase';
+import { getAuth } from 'firebase/auth';
 
-const CheckoutScreen = () => {
-  const navigation = useNavigation();
-  const { total: rawTotal } = useLocalSearchParams();
-  const productTotal = parseFloat(rawTotal as string) || 0;
-
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState('');
-  const [region, setRegion] = useState<'westbank' | 'inside48'>('westbank');
+const CheckoutScreen: React.FC = () => {
+  const headerHeight = useHeaderHeight();
+  const params = useLocalSearchParams();
+  const [cartItems, setCartItems] = useState<any[]>([]);
+  const [total, setTotal] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [shippingOption, setShippingOption] = useState<'westbank' | 'inside48'>('westbank');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash');
 
-  const [open, setOpen] = useState(false);
-  const [city, setCity] = useState<string | null>(null);
-  const [cities, setCities] = useState([
-    { label: 'Nablus', value: 'Nablus' },
-    { label: 'Ramallah', value: 'Ramallah' },
-    { label: 'Hebron', value: 'Hebron' },
-    { label: 'Jenin', value: 'Jenin' },
-    { label: 'Tulkarm', value: 'Tulkarm' },
-    { label: 'Jerusalem', value: 'Jerusalem' },
-  ]);
+  useEffect(() => {
+    try {
+      if (params.items && typeof params.items === 'string') {
+        const parsedItems = JSON.parse(params.items);
+        setCartItems(parsedItems);
+        
+        // Calculate total from cart items
+        const calculatedTotal = parsedItems.reduce((acc: number, item: any) => {
+          return acc + (item.price * item.quantity);
+        }, 0);
+        setTotal(calculatedTotal);
+      }
 
-  const [cardNumber, setCardNumber] = useState('');
-  const [expiryDate, setExpiryDate] = useState('');
-  const [cvv, setCvv] = useState('');
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error parsing data:', error);
+      Alert.alert('Error', 'Failed to load order data');
+      router.back();
+    }
+  }, []);
 
-  const deliveryFee = region === 'westbank' ? 20 : 60;
-  const finalTotal = productTotal + deliveryFee;
+  const [formData, setFormData] = useState({
+    fullName: '',
+    phone: '',
+    address: '',
+    city: '',
+    cardNumber: '',
+    expiryDate: '',
+    cvv: ''
+  });
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
 
   const handlePlaceOrder = async () => {
-    if (!name || !phone || !address || !city) {
-      Alert.alert('Missing Information', 'Please fill in all fields.');
-      return;
-    }
-
-    if (paymentMethod === 'card' && (!cardNumber || !expiryDate || !cvv)) {
-      Alert.alert('Card Information Missing', 'Please fill in card details.');
-      return;
-    }
-
-    Alert.alert('Order Confirmed', `Your order was placed successfully!\nTotal: ₪${finalTotal}`);
-    navigation.goBack();
-
-    // إرسال إشعار للمستخدم بعد الطلب
     try {
-      const user = auth.currentUser;
-      if (user) {
-        const userRef = doc(db, 'users', user.uid);
-        const userSnap = await getDoc(userRef);
-        const token = userSnap.data()?.expoPushToken;
-
-        if (token) {
-          await fetch('https://exp.host/--/api/v2/push/send', {
-            method: 'POST',
-            headers: {
-              Accept: 'application/json',
-              'Accept-encoding': 'gzip, deflate',
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              to: token,
-              sound: 'default',
-              title: 'Order Received 🎁',
-              body: `Thank you for your order at M&H! Total: ₪${finalTotal}`,
-            }),
-          });
-        }
+      if (!formData.fullName || !formData.phone || !formData.address || !formData.city) {
+        Alert.alert('Error', 'Please fill in all fields');
+        return;
       }
+
+      if (paymentMethod === 'card' && (!formData.cardNumber || !formData.expiryDate || !formData.cvv)) {
+        Alert.alert('Error', 'Please fill in card details');
+        return;
+      }
+
+      const auth = getAuth();
+      const user = auth.currentUser;
+
+      if (!user) {
+        Alert.alert('Error', 'Please sign in to place an order');
+        router.push('/signin');
+        return;
+      }
+
+      const shippingFee = shippingOption === 'westbank' ? 20 : 60;
+      const finalTotal = total + shippingFee;
+
+      const orderData = {
+        userId: user.uid,
+        items: cartItems,
+        total: finalTotal,
+        shippingInfo: {
+          fullName: formData.fullName,
+          phone: formData.phone,
+          address: formData.address,
+          city: formData.city,
+          region: shippingOption
+        },
+        paymentInfo: {
+          method: paymentMethod,
+          ...(paymentMethod === 'card' ? {
+            cardNumber: formData.cardNumber,
+            expiryDate: formData.expiryDate,
+            cvv: formData.cvv
+          } : {})
+        },
+        status: 'pending',
+        createdAt: new Date()
+      };
+
+      const ordersRef = collection(db, 'orders');
+      await addDoc(ordersRef, orderData);
+
+      Alert.alert(
+        'Success',
+        `Your order has been placed successfully!\nTotal: ₪${finalTotal}`,
+        [
+          {
+            text: 'OK',
+            onPress: () => router.push('/(tabs)')
+          }
+        ]
+      );
     } catch (error) {
-      console.log('Failed to send notification:', error);
+      console.error('Error placing order:', error);
+      Alert.alert('Error', 'Failed to place order. Please try again.');
     }
   };
 
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={styles.loadingText}>Loading order details...</Text>
+      </View>
+    );
+  }
+
   return (
-    <View style={{ flex: 1, padding: 20, backgroundColor: '#fff' }}>
-      <Text style={styles.title}>Checkout</Text>
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <View style={[styles.container, { marginTop: headerHeight }]}>
+        <View style={styles.headerContainer}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="arrow-back" size={28} color={Colors.primary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Checkout</Text>
+          <View style={{ width: 40 }} />
+        </View>
+        <View style={styles.headerLine} />
 
-      {/* بقية عناصر الشيك اوت (نفس الكود السابق) */}
-      {/* لا حاجة لتعديل الجزء الخاص بالفورم والمعلومات */}
+        <ScrollView style={styles.scrollView}>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Order Items</Text>
+            {cartItems.map((item, index) => (
+              <View key={index} style={styles.cartItem}>
+                <Image source={{ uri: item.image }} style={styles.itemImage} />
+                <View style={styles.itemDetails}>
+                  <Text style={styles.itemTitle}>{item.title}</Text>
+                  <Text style={styles.itemPrice}>₪{item.price.toFixed(2)} x {item.quantity}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
 
-      {/* في النهاية */}
-      <TouchableOpacity style={styles.button} onPress={handlePlaceOrder}>
-        <Text style={styles.buttonText}>Place Order</Text>
-      </TouchableOpacity>
-    </View>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Shipping Information</Text>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Full Name</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.fullName}
+                onChangeText={(text) => handleInputChange('fullName', text)}
+                placeholder="Enter your full name"
+              />
+            </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Phone</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.phone}
+                onChangeText={(text) => handleInputChange('phone', text)}
+                placeholder="Enter your phone number"
+                keyboardType="phone-pad"
+              />
+            </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Address</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.address}
+                onChangeText={(text) => handleInputChange('address', text)}
+                placeholder="Enter your address"
+              />
+            </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>City</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.city}
+                onChangeText={(text) => handleInputChange('city', text)}
+                placeholder="Enter your city"
+              />
+            </View>
+            <View style={styles.shippingOptions}>
+              <Text style={styles.label}>Shipping Region</Text>
+              <View style={styles.optionRow}>
+                <TouchableOpacity
+                  style={[styles.option, shippingOption === 'westbank' && styles.selectedOption]}
+                  onPress={() => setShippingOption('westbank')}
+                >
+                  <Ionicons
+                    name={shippingOption === 'westbank' ? 'radio-button-on' : 'radio-button-off'}
+                    size={24}
+                    color={shippingOption === 'westbank' ? Colors.primary : Colors.gray}
+                  />
+                  <Text style={styles.optionText}>West Bank (₪20)</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.option, shippingOption === 'inside48' && styles.selectedOption]}
+                  onPress={() => setShippingOption('inside48')}
+                >
+                  <Ionicons
+                    name={shippingOption === 'inside48' ? 'radio-button-on' : 'radio-button-off'}
+                    size={24}
+                    color={shippingOption === 'inside48' ? Colors.primary : Colors.gray}
+                  />
+                  <Text style={styles.optionText}>Inside 48 (₪60)</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Payment Method</Text>
+            <View style={styles.paymentOptions}>
+              <TouchableOpacity
+                style={[styles.option, paymentMethod === 'cash' && styles.selectedOption]}
+                onPress={() => setPaymentMethod('cash')}
+              >
+                <Ionicons
+                  name={paymentMethod === 'cash' ? 'radio-button-on' : 'radio-button-off'}
+                  size={24}
+                  color={paymentMethod === 'cash' ? Colors.primary : Colors.gray}
+                />
+                <Text style={styles.optionText}>Cash on Delivery</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.option, paymentMethod === 'card' && styles.selectedOption]}
+                onPress={() => setPaymentMethod('card')}
+              >
+                <Ionicons
+                  name={paymentMethod === 'card' ? 'radio-button-on' : 'radio-button-off'}
+                  size={24}
+                  color={paymentMethod === 'card' ? Colors.primary : Colors.gray}
+                />
+                <Text style={styles.optionText}>Credit Card</Text>
+              </TouchableOpacity>
+            </View>
+
+            {paymentMethod === 'card' && (
+              <>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Card Number</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={formData.cardNumber}
+                    onChangeText={(text) => handleInputChange('cardNumber', text)}
+                    placeholder="Enter card number"
+                    keyboardType="number-pad"
+                  />
+                </View>
+                <View style={styles.row}>
+                  <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                    <Text style={styles.label}>Expiry Date</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={formData.expiryDate}
+                      onChangeText={(text) => handleInputChange('expiryDate', text)}
+                      placeholder="MM/YY"
+                    />
+                  </View>
+                  <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                    <Text style={styles.label}>CVV</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={formData.cvv}
+                      onChangeText={(text) => handleInputChange('cvv', text)}
+                      placeholder="CVV"
+                      keyboardType="number-pad"
+                      secureTextEntry
+                    />
+                  </View>
+                </View>
+              </>
+            )}
+          </View>
+
+          <View style={styles.summarySection}>
+            <Text style={styles.summaryTitle}>Order Summary</Text>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Cart Total</Text>
+              <Text style={styles.summaryValue}>₪{total.toFixed(2)}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Shipping</Text>
+              <Text style={styles.summaryValue}>₪{shippingOption === 'westbank' ? '20.00' : '60.00'}</Text>
+            </View>
+            <View style={[styles.summaryRow, styles.totalRow]}>
+              <Text style={styles.totalLabel}>Total Amount</Text>
+              <Text style={styles.totalValue}>₪{(total + (shippingOption === 'westbank' ? 20 : 60)).toFixed(2)}</Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={styles.placeOrderButton}
+            onPress={handlePlaceOrder}
+          >
+            <Text style={styles.placeOrderButtonText}>Place Order</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    </>
   );
 };
 
-export const unstable_settings = {
-  headerShown: false,
-};
-
-export default CheckoutScreen;
-
 const styles = StyleSheet.create({
-  title: {
-    fontSize: 24,
+  container: {
+    flex: 1,
+    backgroundColor: Colors.white,
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: Colors.white,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 30,
-    marginTop: 30,
-    textAlign: "center",
-    color: Colors.primary,
+    color: Colors.black,
+  },
+  headerLine: {
+    height: 1,
+    backgroundColor: '#eee',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  section: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 14,
+    color: Colors.gray,
+    marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#ddd',
     borderRadius: 8,
-    padding: 10,
-    marginBottom: 15,
-    color: Colors.gray,
-  },
-  label: {
+    padding: 12,
     fontSize: 16,
-    fontWeight: 'bold',
-    marginTop: 10,
-    marginBottom: 5,
   },
-  dropdown: {
-    borderColor: '#ccc',
-    marginBottom: 15,
-    height: 40,
+  row: {
+    flexDirection: 'row',
   },
-  dropdownContainer: {
-    borderColor: '#ccc',
+  shippingOptions: {
+    marginBottom: 16,
+  },
+  paymentOptions: {
+    marginBottom: 16,
   },
   optionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginVertical: 10,
+    marginTop: 8,
   },
-  radio: {
+  option: {
     flexDirection: 'row',
     alignItems: 'center',
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    flex: 1,
+    marginHorizontal: 4,
   },
-  selected: {
-    color: Colors.primary,
-    fontSize: 18,
-    marginRight: 5,
-  },
-  unselected: {
-    color: Colors.lightGray,
-    fontSize: 18,
-    marginRight: 5,
+  selectedOption: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.extraLightGray,
   },
   optionText: {
+    marginLeft: 8,
     fontSize: 16,
   },
-  total: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginTop: 10,
+  summarySection: {
+    padding: 16,
+    backgroundColor: Colors.extraLightGray,
   },
-  button: {
+  summaryTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  summaryLabel: {
+    fontSize: 14,
+    color: Colors.gray,
+  },
+  summaryValue: {
+    fontSize: 14,
+    color: Colors.black,
+    fontWeight: '500',
+  },
+  totalRow: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#ddd',
+  },
+  totalLabel: {
+    fontSize: 16,
+    color: Colors.black,
+    fontWeight: 'bold',
+  },
+  totalValue: {
+    fontSize: 16,
+    color: Colors.primary,
+    fontWeight: 'bold',
+  },
+  placeOrderButton: {
     backgroundColor: Colors.primary,
-    padding: 15,
+    margin: 16,
+    padding: 16,
     borderRadius: 8,
-    marginTop: 30,
     alignItems: 'center',
   },
-  buttonText: {
-    color: '#fff',
+  placeOrderButtonText: {
+    color: Colors.white,
+    fontSize: 16,
     fontWeight: 'bold',
-    fontSize: 17,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.white,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: Colors.gray,
+  },
+  cartItem: {
+    flexDirection: 'row',
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    marginBottom: 10,
+  },
+  itemImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginRight: 10,
+  },
+  itemDetails: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  itemTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 5,
+  },
+  itemPrice: {
+    fontSize: 14,
+    color: Colors.primary,
   },
 });
+
+export default CheckoutScreen;
+

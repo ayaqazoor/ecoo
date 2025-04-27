@@ -8,6 +8,7 @@ export interface ProductType {
   categoryId: string;
   discount: number;
   originalPrice: number;
+  
 }
 
 interface Category {

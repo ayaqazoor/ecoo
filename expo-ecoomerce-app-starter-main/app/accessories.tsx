@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 const AccessoriesScreen = () => {
   const [products, setProducts] = useState<ProductType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadAccessoriesProducts();
@@ -18,37 +19,66 @@ const AccessoriesScreen = () => {
 
   const loadAccessoriesProducts = async () => {
     try {
+      console.log('Starting to fetch accessories products...');
       const productsRef = collection(db, 'products');
-      const q = query(productsRef, where('category', '==', 'Accessories'));
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await getDocs(productsRef);
+      
+      console.log(`Found ${querySnapshot.size} total products`);
       
       const productsList: ProductType[] = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        productsList.push({
-          id: doc.id,
-          title: String(data.title),
-          price: Number(data.price),
-          description: String(data.description),
-          images: Array.isArray(data.images) ? data.images : [],
-          category: String(data.category),
-          discount: 0,
-          originalPrice: Number(data.price)
-        });
+        console.log('Processing product:', data);
+        
+        // Check if the product has a category object with id = 3
+        if (data.category && data.category.id === 3) {
+          productsList.push({
+            id: doc.id,
+            title: String(data.title || ''),
+            price: Number(data.price || 0),
+            description: String(data.description || ''),
+            images: Array.isArray(data.images) ? data.images : [],
+            category: String(data.category.name || ''),
+            categoryId: String(data.category.id || '3'),
+            discount: Number(data.discount || 0),
+            originalPrice: Number(data.originalPrice || data.price || 0)
+          });
+        }
       });
+
+      console.log(`Found ${productsList.length} accessories products`);
+      
+      if (productsList.length === 0) {
+        setError('No accessories products found');
+        return;
+      }
+
       setProducts(productsList);
     } catch (error) {
       console.error('Error fetching accessories products:', error);
+      setError('Failed to load accessories products');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleProductPress = (productId: string) => {
+    console.log('Navigating to product details:', productId);
+    router.push({
+      pathname: '/product-details/[id]',
+      params: { 
+        id: productId,
+        productType: 'regular',
+        categoryId: '3'
+      }
+    });
   };
 
   const renderProductItem = ({ item }: { item: ProductType }) => {
     return (
       <TouchableOpacity
         style={styles.productItem}
-        onPress={() => router.push(`/product-details/${item.id}`)}
+        onPress={() => handleProductPress(item.id)}
       >
         <Image
           source={{ uri: item.images[0] }}
@@ -58,9 +88,11 @@ const AccessoriesScreen = () => {
           <Text style={styles.productTitle} numberOfLines={2}>
             {item.title}
           </Text>
-          <Text style={styles.productPrice}>
-            ₪{item.price.toFixed(2)}
-          </Text>
+          <View style={styles.priceContainer}>
+            <Text style={styles.price}>
+              ₪{item.price.toFixed(2)}
+            </Text>
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -74,6 +106,28 @@ const AccessoriesScreen = () => {
     );
   }
 
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity 
+          style={styles.retryButton}
+          onPress={loadAccessoriesProducts}
+        >
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (products.length === 0) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>No accessories products available</Text>
+      </View>
+    );
+  }
+
   return (
     <>
       <Stack.Screen
@@ -82,7 +136,7 @@ const AccessoriesScreen = () => {
           headerLeft: () => (
             <TouchableOpacity 
               style={styles.headerButton}
-              onPress={() => router.push('/explore')}
+              onPress={() => router.back()}
             >
               <Ionicons name="arrow-back" size={28} color={Colors.primary} />
             </TouchableOpacity>
@@ -131,6 +185,42 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: Colors.background,
   },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+    padding: 20,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: Colors.primary,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: Colors.gray,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
   listContainer: {
     padding: 16,
   },
@@ -161,7 +251,11 @@ const styles = StyleSheet.create({
     color: Colors.black,
     marginBottom: 8,
   },
-  productPrice: {
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  price: {
     fontSize: 16,
     fontWeight: 'bold',
     color: Colors.primary,

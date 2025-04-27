@@ -11,52 +11,67 @@ import { Ionicons } from '@expo/vector-icons';
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 60) / 2;
 
-const HairCareScreen = () => {
+const HandBagScreen = () => {
   const [products, setProducts] = useState<ProductType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadHairCareProducts();
+    loadHandBagProducts();
   }, []);
 
-  const loadHairCareProducts = async () => {
+  const loadHandBagProducts = async () => {
     try {
-      console.log('Starting to fetch hair care products...');
-      const productsRef = collection(db, 'products');
-      const q = query(productsRef, where('category.id', '==', 6));
-      const querySnapshot = await getDocs(q);
+      console.log('Starting to fetch hand bag products...');
+      console.log('Firebase db instance:', db);
       
-      console.log(`Found ${querySnapshot.size} hair care products`);
+      const productsRef = collection(db, 'products');
+      console.log('Products collection reference created');
+      
+      const q = query(productsRef, where('category.id', '==', 4));
+      console.log('Query created with category.id = 4');
+      
+      const querySnapshot = await getDocs(q);
+      console.log('Query executed successfully');
+      console.log('Query snapshot size:', querySnapshot.size);
       
       if (querySnapshot.empty) {
-        console.log('No hair care products found');
-        setError('No hair care products found');
+        console.log('No hand bag products found');
+        setError('No hand bag products found');
         return;
       }
 
       const productsList: ProductType[] = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        console.log('Processing product:', data);
+        console.log('Processing product ID:', doc.id);
+        console.log('Product data:', JSON.stringify(data, null, 2));
         
+        // التحقق من وجود البيانات المطلوبة
+        if (!data.category || !data.category.id) {
+          console.warn('Product missing category data:', doc.id);
+          return;
+        }
+
         productsList.push({
           id: doc.id,
           title: String(data.title || ''),
           price: Number(data.price || 0),
           description: String(data.description || ''),
           images: Array.isArray(data.images) ? data.images : [],
-          category: String(data.category?.name || ''),
-          categoryId: String(data.category?.id || ''),
+          category: String(data.category.name || ''),
+          categoryId: String(data.category.id || ''),
           discount: Number(data.discount || 0),
           originalPrice: Number(data.originalPrice || data.price || 0)
         });
       });
 
+      console.log('Total products processed:', productsList.length);
       setProducts(productsList);
     } catch (error) {
-      console.error('Error fetching hair care products:', error);
-      setError('Failed to load hair care products');
+      console.error('Error details:', error);
+      console.error('Error stack:', error.stack);
+      setError('Failed to load hand bag products. Please check console for details.');
     } finally {
       setIsLoading(false);
     }
@@ -69,7 +84,7 @@ const HairCareScreen = () => {
       params: { 
         id: productId,
         productType: 'regular',
-        category: 'Hair Care'
+        category: 'Hand Bag'
       }
     });
   };
@@ -113,7 +128,7 @@ const HairCareScreen = () => {
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity 
           style={styles.retryButton}
-          onPress={loadHairCareProducts}
+          onPress={loadHandBagProducts}
         >
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
@@ -124,7 +139,7 @@ const HairCareScreen = () => {
   if (products.length === 0) {
     return (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>No hair care products available</Text>
+        <Text style={styles.emptyText}>No hand bag products available</Text>
       </View>
     );
   }
@@ -133,7 +148,7 @@ const HairCareScreen = () => {
     <>
       <Stack.Screen
         options={{
-          headerTitle: 'Hair Care',
+          headerTitle: 'Hand Bag',
           headerLeft: () => (
             <TouchableOpacity 
               style={styles.headerButton}
@@ -290,4 +305,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default HairCareScreen; 
+export default HandBagScreen;
