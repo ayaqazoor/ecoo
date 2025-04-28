@@ -83,6 +83,10 @@ const CheckoutScreen: React.FC = () => {
         userId: user.uid,
         items: cartItems,
         total: finalTotal,
+        customerName: formData.fullName,
+        customerPhone: formData.phone,
+        customerAddress: formData.address,
+        customerCity: formData.city,
         shippingInfo: {
           fullName: formData.fullName,
           phone: formData.phone,

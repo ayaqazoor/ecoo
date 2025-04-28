@@ -1,6 +1,5 @@
 import { StyleSheet, Text, View, FlatList, Image, ActivityIndicator, TouchableOpacity } from 'react-native';
 import React, { useEffect, useState } from 'react';
-import { ProductType } from '@/types/type';
 import { router, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/Colors';
@@ -8,9 +7,22 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { Ionicons } from '@expo/vector-icons';
 
+interface ProductType {
+  id: string;
+  name: string;
+  title: string;
+  price: number;
+  images: string[];
+  category: {
+    id: number;
+    name: string;
+  };
+}
+
 const GiftScreen = () => {
   const [products, setProducts] = useState<ProductType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadGiftProducts();
@@ -18,37 +30,59 @@ const GiftScreen = () => {
 
   const loadGiftProducts = async () => {
     try {
+      console.log('Fetching gift products...');
       const productsRef = collection(db, 'products');
-      const q = query(productsRef, where('category', '==', 'Gift'));
+      const q = query(productsRef, where('category.id', '==', 9));
       const querySnapshot = await getDocs(q);
-      
+
+      if (querySnapshot.empty) {
+        console.log('No gift products found');
+        setError('No gift products found');
+        return;
+      }
+
       const productsList: ProductType[] = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data();
         productsList.push({
           id: doc.id,
-          title: String(data.title),
-          price: Number(data.price),
-          description: String(data.description),
+          name: String(data.name || ''),
+          title: String(data.title || ''),
+          price: Number(data.price || 0),
           images: Array.isArray(data.images) ? data.images : [],
-          category: String(data.category),
-          discount: 0,
-          originalPrice: Number(data.price)
+          category: {
+            id: Number(data.category?.id || 0),
+            name: String(data.category?.name || ''),
+          },
         });
       });
+
       setProducts(productsList);
     } catch (error) {
       console.error('Error fetching gift products:', error);
+      setError('Failed to load gift products');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleProductPress = (productId: string) => {
+    console.log('Navigating to product details:', productId);
+    router.push({
+      pathname: '/product-details/[id]',
+      params: { 
+        id: productId,
+        productType: 'regular',
+        category: 'Gift'
+      }
+    });
   };
 
   const renderProductItem = ({ item }: { item: ProductType }) => {
     return (
       <TouchableOpacity
         style={styles.productItem}
-        onPress={() => router.push(`/product-details/${item.id}`)}
+        onPress={() => handleProductPress(item.id)}
       >
         <Image
           source={{ uri: item.images[0] }}
@@ -56,11 +90,13 @@ const GiftScreen = () => {
         />
         <View style={styles.productInfo}>
           <Text style={styles.productTitle} numberOfLines={2}>
-            {item.title}
+            {item.name}
           </Text>
-          <Text style={styles.productPrice}>
-            ₪{item.price.toFixed(2)}
-          </Text>
+          <View style={styles.priceContainer}>
+            <Text style={styles.price}>
+              ₪{item.price.toFixed(2)}
+            </Text>
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -74,6 +110,28 @@ const GiftScreen = () => {
     );
   }
 
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity 
+          style={styles.retryButton}
+          onPress={loadGiftProducts}
+        >
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (products.length === 0) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>No gift products available</Text>
+      </View>
+    );
+  }
+
   return (
     <>
       <Stack.Screen
@@ -82,7 +140,7 @@ const GiftScreen = () => {
           headerLeft: () => (
             <TouchableOpacity 
               style={styles.headerButton}
-              onPress={() => router.push('/explore')}
+              onPress={() => router.back()}
             >
               <Ionicons name="arrow-back" size={28} color={Colors.primary} />
             </TouchableOpacity>
@@ -131,6 +189,42 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: Colors.background,
   },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+    padding: 20,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: Colors.primary,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: Colors.gray,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
   listContainer: {
     padding: 16,
   },
@@ -161,7 +255,11 @@ const styles = StyleSheet.create({
     color: Colors.black,
     marginBottom: 8,
   },
-  productPrice: {
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  price: {
     fontSize: 16,
     fontWeight: 'bold',
     color: Colors.primary,
@@ -172,4 +270,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default GiftScreen; 
+export default GiftScreen;

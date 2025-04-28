@@ -4,27 +4,14 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '@/constants/Colors';
 import { View } from 'react-native';
-import AdminPanel from './AdminPanel';
 
 export default function TabLayout() {
-  const [isAdmin, setIsAdmin] = useState(false); // حالة للتحقق إذا كان المستخدم أدمن
-
-  useEffect(() => {
-    const checkAdminStatus = async () => {
-      const savedRole = await AsyncStorage.getItem('userRole');
-      console.log("Saved Role: ", savedRole); // طباعة قيمة الدور في الـ AsyncStorage
-      setIsAdmin(savedRole === 'admin'); // التحقق إذا كان المستخدم أدمن
-    };
-
-    checkAdminStatus();
-  }, []);
-
   return (
     <Tabs
       screenOptions={({ route }) => {
         if (!route?.name) {
           console.error("route.name is undefined:", route);
-          return {}; // تجنب تعطل التطبيق
+          return {}; 
         }
 
         const iconName = useMemo(() => {
@@ -35,7 +22,6 @@ export default function TabLayout() {
             notifications: "notifications-outline",
             cart: "cart-outline",
             profile: "person-outline",
-            AdminPanel: "settings-outline", // أيقونة لوحة التحكم للأدمن
           };
           return icons[route.name] || "help-circle-outline";
         }, [route.name]);
@@ -87,9 +73,6 @@ export default function TabLayout() {
       <Tabs.Screen name="notifications" options={{ title: "Notifications" }} />
       <Tabs.Screen name="cart" options={{ title: "Cart", tabBarBadge: 3 }} />
       <Tabs.Screen name="profile" options={{ title: "Profile" }} />
-      
-      {/* فقط إذا كان المستخدم أدمن، يظهر تبويب لوحة التحكم */}
-      {isAdmin && <Tabs.Screen name="AdminPanel" options={{ title: "Admin Panel" }} />}
     </Tabs>
   );
 }

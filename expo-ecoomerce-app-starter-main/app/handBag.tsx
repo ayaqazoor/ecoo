@@ -23,17 +23,11 @@ const HandBagScreen = () => {
   const loadHandBagProducts = async () => {
     try {
       console.log('Starting to fetch hand bag products...');
-      console.log('Firebase db instance:', db);
-      
       const productsRef = collection(db, 'products');
-      console.log('Products collection reference created');
-      
       const q = query(productsRef, where('category.id', '==', 4));
-      console.log('Query created with category.id = 4');
-      
       const querySnapshot = await getDocs(q);
-      console.log('Query executed successfully');
-      console.log('Query snapshot size:', querySnapshot.size);
+      
+      console.log(`Found ${querySnapshot.size} hand bag products`);
       
       if (querySnapshot.empty) {
         console.log('No hand bag products found');
@@ -44,34 +38,25 @@ const HandBagScreen = () => {
       const productsList: ProductType[] = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        console.log('Processing product ID:', doc.id);
-        console.log('Product data:', JSON.stringify(data, null, 2));
+        console.log('Processing product:', data);
         
-        // التحقق من وجود البيانات المطلوبة
-        if (!data.category || !data.category.id) {
-          console.warn('Product missing category data:', doc.id);
-          return;
-        }
-
         productsList.push({
           id: doc.id,
           title: String(data.title || ''),
           price: Number(data.price || 0),
           description: String(data.description || ''),
           images: Array.isArray(data.images) ? data.images : [],
-          category: String(data.category.name || ''),
-          categoryId: String(data.category.id || ''),
+          category: String(data.category?.name || ''),
+          categoryId: String(data.category?.id || ''),
           discount: Number(data.discount || 0),
           originalPrice: Number(data.originalPrice || data.price || 0)
         });
       });
 
-      console.log('Total products processed:', productsList.length);
       setProducts(productsList);
     } catch (error) {
-      console.error('Error details:', error);
-      console.error('Error stack:', error.stack);
-      setError('Failed to load hand bag products. Please check console for details.');
+      console.error('Error fetching hand bag products:', error);
+      setError('Failed to load hand bag products');
     } finally {
       setIsLoading(false);
     }

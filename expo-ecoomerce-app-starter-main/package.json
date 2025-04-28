@@ -45,6 +45,8 @@
     "expo-updates": "~0.27.4",
     "expo-web-browser": "~14.0.2",
     "firebase": "^11.6.1",
+    "firebase-admin": "^13.3.0",
+    "firebase-functions": "^6.3.2",
     "i18next": "^24.2.3",
     "nativewind": "^2.0.11",
     "react": "18.3.1",
@@ -71,7 +73,7 @@
     "jest-expo": "^52.0.6",
     "react-native-svg-transformer": "^1.5.0",
     "react-test-renderer": "18.2.0",
-    "typescript": "~5.3.3"
+    "typescript": "^5.8.3"
   },
   "private": true
 }

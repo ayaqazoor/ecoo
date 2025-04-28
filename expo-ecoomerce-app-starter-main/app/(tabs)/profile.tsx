@@ -1,9 +1,10 @@
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Switch } from "react-native";
 import React, { useState, useEffect } from "react";
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import { Colors } from "@/constants/Colors";
-import { auth } from "@/config/firebase";
-import { signOut, onAuthStateChanged } from "firebase/auth"; // اضفنا onAuthStateChanged
+import { auth, db } from "@/config/firebase";
+import { signOut, onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc } from 'firebase/firestore';
 import { useRouter } from "expo-router";
 
 type Option = {
@@ -23,17 +24,31 @@ const ProfileScreen = () => {
   const [username, setUsername] = useState("");
   const [photoURL, setPhotoURL] = useState<string | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setUsername(user.displayName || user.email || "User");
         setPhotoURL(user.photoURL);
+        
+        // التحقق من دور المستخدم في Firebase
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          const userData = userDoc.data();
+          console.log("User Data:", userData); // للتأكد من البيانات
+          setIsAdmin(userData?.role === 'admin');
+        } catch (error) {
+          console.error("Error checking admin status:", error);
+          setIsAdmin(false);
+        }
+      } else {
+        setIsAdmin(false);
       }
     });
 
-    return () => unsubscribe(); // مهم نوقف الاستماع عند الخروج
+    return () => unsubscribe();
   }, []);
 
   const handleLogout = async () => {
@@ -57,41 +72,63 @@ const ProfileScreen = () => {
     }
   };
 
+  const handleAdminPanelPress = () => {
+    router.push('/AdminPanel');
+  };
+
+  const renderHeader = () => (
+    <View style={styles.header}>
+      <Image
+        source={
+          photoURL
+            ? { uri: photoURL }
+            : require("@/assets/images/accnotf.jpeg")
+        }
+        style={styles.avatar}
+      />
+      <Text style={styles.username}>{username}</Text>
+    </View>
+  );
+
+  const renderAdminButton = () => (
+    isAdmin && (
+      <TouchableOpacity 
+        style={styles.adminButton}
+        onPress={handleAdminPanelPress}
+      >
+        <Ionicons name="settings-outline" size={24} color="#8B5E3C" />
+        <Text style={styles.adminButtonText}>Admin Panel</Text>
+      </TouchableOpacity>
+    )
+  );
+
+  const renderItem = ({ item }: { item: Option }) => (
+    <TouchableOpacity
+      style={styles.option}
+      activeOpacity={0.7}
+      onPress={() => handleOptionPress(item)}
+    >
+      <Feather name={item.icon} size={22} color={Colors.primary} style={styles.icon} />
+      <Text style={styles.optionText}>{item.title}</Text>
+      {item.title === "Dark Mode" ? (
+        <Switch
+          value={isDarkMode}
+          onValueChange={() => setIsDarkMode((prev) => !prev)}
+        />
+      ) : (
+        <Feather name="chevron-right" size={22} color={Colors.primary} />
+      )}
+    </TouchableOpacity>
+  );
+
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Image
-          source={
-            photoURL
-              ? { uri: photoURL }
-              : require("@/assets/images/accnotf.jpeg")
-          }
-          style={styles.avatar}
-        />
-        <Text style={styles.username}>{username}</Text>
-      </View>
-
       <FlatList
         data={options}
         keyExtractor={(item) => item.title}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.option}
-            activeOpacity={0.7}
-            onPress={() => handleOptionPress(item)}
-          >
-            <Feather name={item.icon} size={22} color={Colors.primary} style={styles.icon} />
-            <Text style={styles.optionText}>{item.title}</Text>
-            {item.title === "Dark Mode" ? (
-              <Switch
-                value={isDarkMode}
-                onValueChange={() => setIsDarkMode((prev) => !prev)}
-              />
-            ) : (
-              <Feather name="chevron-right" size={22} color={Colors.primary} />
-            )}
-          </TouchableOpacity>
-        )}
+        renderItem={renderItem}
+        ListHeaderComponent={renderHeader}
+        ListFooterComponent={renderAdminButton}
         contentContainerStyle={styles.list}
       />
     </View>
@@ -138,5 +175,20 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: Colors.primary,
+  },
+  adminButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    padding: 15,
+    borderRadius: 10,
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  adminButtonText: {
+    marginLeft: 10,
+    fontSize: 16,
+    color: '#8B5E3C',
+    fontWeight: '600',
   },
 });
