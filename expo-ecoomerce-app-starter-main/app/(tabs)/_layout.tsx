@@ -9,6 +9,7 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={({ route }) => {
+        
         if (!route?.name) {
           console.error("route.name is undefined:", route);
           return {}; 
