@@ -1,4 +1,5 @@
 export interface ProductType {
+  productType: string | number | (string | number)[] | null | undefined;
   id: string;
   title: string;
   price: number;
