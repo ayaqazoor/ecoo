@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,11 +10,13 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { Audio } from 'expo-av';
 
 const EveningCareScreen = () => {
   const router = useRouter();
   const headerColor = '#9370DB'; // Purple-ish for evening
   const backgroundColor = '#EFEAF9';
+  const [sound, setSound] = useState();
 
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedStepIndex, setSelectedStepIndex] = useState(null);
@@ -29,6 +31,26 @@ const EveningCareScreen = () => {
   ];
 
   const [steps, setSteps] = useState(initialSteps);
+
+  const playSound = async () => {
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        require('../../assets/sounds/success.mp3')
+      );
+      setSound(sound);
+      await sound.playAsync();
+    } catch (error) {
+      console.log('Error playing sound:', error);
+    }
+  };
+
+  useEffect(() => {
+    return sound
+      ? () => {
+          sound.unloadAsync();
+        }
+      : undefined;
+  }, [sound]);
 
   const handleAddNote = (index) => {
     const updatedSteps = [...steps];
@@ -46,9 +68,10 @@ const EveningCareScreen = () => {
     setSteps(updatedSteps);
   };
 
-  const handleCheck = (stepIndex, noteIndex) => {
+  const handleCheck = async (stepIndex, noteIndex) => {
     setSelectedStepIndex(stepIndex);
     setSelectedNoteIndex(noteIndex);
+    await playSound();
     setModalVisible(true);
   };
 

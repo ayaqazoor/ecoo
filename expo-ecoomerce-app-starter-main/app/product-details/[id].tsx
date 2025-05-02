@@ -23,7 +23,7 @@ const ProductDetails = () => {
 
     useEffect(() => {
         if (id && productType) {
-            getProductDetails();
+                getProductDetails();
             checkIfFavorite();
         }
     }, [id, productType]);
@@ -65,7 +65,8 @@ const ProductDetails = () => {
                     images: Array.isArray(data.images) ? data.images.map(String) : [],
                     category: String(data.category || 'Uncategorized'),
                     discount: discountPercent,
-                    originalPrice: originalPrice
+                    originalPrice: originalPrice,
+                    productType: undefined
                 };
                 
                 console.log('Processed product data:', productData);

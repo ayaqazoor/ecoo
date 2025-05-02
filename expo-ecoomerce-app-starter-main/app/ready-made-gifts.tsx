@@ -1,60 +1,94 @@
-import { StyleSheet, Text, View, FlatList, Image, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, FlatList, Image, ActivityIndicator, TouchableOpacity, TextInput, Modal } from 'react-native';
 import React, { useEffect, useState } from 'react';
-import { ProductType } from '@/types/type';
 import { router, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/Colors';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { Ionicons } from '@expo/vector-icons';
 
-const FlashSaleScreen = () => {
+interface ProductType {
+  id: string;
+  name: string;
+  title: string;
+  price: number;
+  images: string[];
+  category: {
+    id: number;
+    name: string;
+  };
+}
+
+const ReadyMadeGiftsScreen = () => {
   const [products, setProducts] = useState<ProductType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadFlashSaleProducts();
+    loadReadyMadeGifts();
   }, []);
 
-  const loadFlashSaleProducts = async () => {
+  const loadReadyMadeGifts = async () => {
     try {
-      const querySnapshot = await getDocs(collection(db, 'saleProducts'));
+      console.log('Fetching ready-made gifts...');
+      const productsRef = collection(db, 'products');
+      const q = query(productsRef, where('category.id', '==', 9));
+      const querySnapshot = await getDocs(q);
+      console.log('querySnapshot size:', querySnapshot.size);
+
+      // تحقق من البيانات المسترجعة
+      querySnapshot.forEach((doc) => {
+        console.log('Product data:', doc.data());
+      });
+
+      if (querySnapshot.empty) {
+        console.log('No ready-made gifts found');
+        setError('No ready-made gifts found');
+        return;
+      }
+
       const productsList: ProductType[] = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        if (data && data.images && data.images.length > 0) {
-          productsList.push({
-            id: doc.id,
-            title: String(data.title || ''),
-            price: Number(data.price || 0),
-            description: String(data.description || ''),
-            images: Array.isArray(data.images) ? data.images : [],
-            category: String(data.category || ''),
-            categoryId: String(data.categoryId || '0'),
-            discount: Number(data.discount || 15),
-            originalPrice: Number(data.originalPrice || data.price || 0),
-            productType: 'sale' // أضف هذا السطر - يجب أن تتأكد أن النوع مناسب لتعريف ProductType
-          });
-          
-        }
+        productsList.push({
+          id: doc.id,
+          name: String(data.name || ''),
+          title: String(data.title || ''),
+          price: Number(data.price || 0),
+          images: Array.isArray(data.images) ? data.images : [],
+          category: {
+            id: Number(data.category?.id || 0),
+            name: String(data.category?.name || ''),
+          },
+        });
       });
+
       setProducts(productsList);
     } catch (error) {
-      console.error('Error fetching flash sale products:', error);
+      console.error('Error fetching ready-made gifts:', error);
+      setError('Failed to load ready-made gifts');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const renderProductItem = ({ item }: { item: ProductType }) => {
-    const originalPrice = item.originalPrice || item.price;
-    const discount = item.discount || 15; // Fixed 15% discount if not specified
-    const discountedPrice = originalPrice - (originalPrice * (discount / 100));
+  const handleProductPress = (productId: string) => {
+    console.log('Navigating to product details:', productId);
+    router.push({
+      pathname: '/product-details/[id]',
+      params: { 
+        id: productId,
+        productType: 'ready-made',
+        category: 'Gift'
+      }
+    });
+  };
 
+  const renderProductItem = ({ item }: { item: ProductType }) => {
     return (
       <TouchableOpacity
         style={styles.productItem}
-        onPress={() => router.push(`/product-details/${item.id}?productType=sale`)}
+        onPress={() => handleProductPress(item.id)}
       >
         <Image
           source={{ uri: item.images[0] }}
@@ -65,15 +99,9 @@ const FlashSaleScreen = () => {
             {item.title}
           </Text>
           <View style={styles.priceContainer}>
-            <Text style={styles.currentPrice}>
-              ₪{discountedPrice.toFixed(2)}
+            <Text style={styles.price}>
+              ₪{item.price.toFixed(2)}
             </Text>
-            <Text style={styles.originalPrice}>
-              ₪{originalPrice.toFixed(2)}
-            </Text>
-            <View style={styles.discountBadge}>
-              <Text style={styles.discountText}>-{discount}%</Text>
-            </View>
           </View>
         </View>
       </TouchableOpacity>
@@ -88,11 +116,25 @@ const FlashSaleScreen = () => {
     );
   }
 
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity 
+          style={styles.retryButton}
+          onPress={loadReadyMadeGifts}
+        >
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <>
       <Stack.Screen
         options={{
-          headerTitle: 'Flash Sale',
+          headerTitle: 'Ready gift packages',
           headerLeft: () => (
             <TouchableOpacity 
               style={styles.headerButton}
@@ -145,6 +187,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: Colors.background,
   },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: Colors.primary,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
   listContainer: {
     padding: 16,
   },
@@ -178,28 +244,11 @@ const styles = StyleSheet.create({
   priceContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
   },
-  currentPrice: {
+  price: {
     fontSize: 16,
     fontWeight: 'bold',
     color: Colors.primary,
-  },
-  originalPrice: {
-    fontSize: 12,
-    color: Colors.gray,
-    textDecorationLine: 'line-through',
-  },
-  discountBadge: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  discountText: {
-    color: Colors.white,
-    fontWeight: 'bold',
-    fontSize: 10,
   },
   headerButton: {
     marginHorizontal: 10,
@@ -207,4 +256,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default FlashSaleScreen; 
+export default ReadyMadeGiftsScreen;

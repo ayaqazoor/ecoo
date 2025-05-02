@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 import {
   View,
@@ -16,6 +16,7 @@ const MorningCareScreen = () => {
   const router = useRouter();
   const headerColor = '#FFB6C1';
   const backgroundColor = '#F6EEEB';
+  const [sound, setSound] = useState();
 
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedStepIndex, setSelectedStepIndex] = useState(null);
@@ -30,6 +31,26 @@ const MorningCareScreen = () => {
   ];
 
   const [steps, setSteps] = useState(initialSteps);
+
+  const playSound = async () => {
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        require('../../assets/sounds/success.mp3')
+      );
+      setSound(sound);
+      await sound.playAsync();
+    } catch (error) {
+      console.log('Error playing sound:', error);
+    }
+  };
+
+  useEffect(() => {
+    return sound
+      ? () => {
+          sound.unloadAsync();
+        }
+      : undefined;
+  }, [sound]);
 
   const handleAddNote = (index) => {
     const updatedSteps = [...steps];
@@ -47,9 +68,10 @@ const MorningCareScreen = () => {
     setSteps(updatedSteps);
   };
 
-  const handleCheck = (stepIndex, noteIndex) => {
+  const handleCheck = async (stepIndex, noteIndex) => {
     setSelectedStepIndex(stepIndex);
     setSelectedNoteIndex(noteIndex);
+    await playSound();
     setModalVisible(true);
   };
 

@@ -62,7 +62,8 @@
     "react-native-web": "~0.19.13",
     "tailwind-react-native-classnames": "^3.0.1",
     "tailwindcss": "^3.3.2",
-    "undefined": "expo-auth-session/providers/google"
+    "undefined": "expo-auth-session/providers/google",
+    "expo-av": "~15.0.2"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

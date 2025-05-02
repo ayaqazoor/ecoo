@@ -5,10 +5,9 @@ export interface ProductType {
   description: string;
   images: string[];
   category: string;
-  categoryId: string;
+  categoryId?: string; // جعلها اختيارية بإضافة ?
   discount: number;
   originalPrice: number;
-  
 }
 
 interface Category {

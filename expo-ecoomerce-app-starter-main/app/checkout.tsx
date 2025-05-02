@@ -79,9 +79,18 @@ const CheckoutScreen: React.FC = () => {
       const shippingFee = shippingOption === 'westbank' ? 20 : 60;
       const finalTotal = total + shippingFee;
 
+      // Create a detailed item list with all necessary fields including images
+      const orderItems = cartItems.map(item => ({
+        productId: item.productId || item.id,
+        name: item.name || item.title || '', // Store the product name as shown in checkout
+        images: item.images ? item.images : [item.image],
+        price: item.price,
+        quantity: item.quantity,
+      }));
+
       const orderData = {
         userId: user.uid,
-        items: cartItems,
+        items: orderItems,       // Store all product details including images
         total: finalTotal,
         customerName: formData.fullName,
         customerPhone: formData.phone,
@@ -92,18 +101,18 @@ const CheckoutScreen: React.FC = () => {
           phone: formData.phone,
           address: formData.address,
           city: formData.city,
-          region: shippingOption
+          region: shippingOption,
         },
         paymentInfo: {
           method: paymentMethod,
           ...(paymentMethod === 'card' ? {
             cardNumber: formData.cardNumber,
             expiryDate: formData.expiryDate,
-            cvv: formData.cvv
-          } : {})
+            cvv: formData.cvv,
+          } : {}),
         },
         status: 'pending',
-        createdAt: new Date()
+        createdAt: new Date(),
       };
 
       const ordersRef = collection(db, 'orders');
@@ -115,8 +124,8 @@ const CheckoutScreen: React.FC = () => {
         [
           {
             text: 'OK',
-            onPress: () => router.push('/(tabs)')
-          }
+            onPress: () => router.push('/(tabs)'),
+          },
         ]
       );
     } catch (error) {
@@ -139,7 +148,7 @@ const CheckoutScreen: React.FC = () => {
       <Stack.Screen options={{ headerShown: false }} />
       <View style={[styles.container, { marginTop: headerHeight }]}>
         <View style={styles.headerContainer}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
           >
@@ -157,8 +166,12 @@ const CheckoutScreen: React.FC = () => {
               <View key={index} style={styles.cartItem}>
                 <Image source={{ uri: item.image }} style={styles.itemImage} />
                 <View style={styles.itemDetails}>
-                  <Text style={styles.itemTitle}>{item.title}</Text>
-                  <Text style={styles.itemPrice}>₪{item.price.toFixed(2)} x {item.quantity}</Text>
+                  <Text style={styles.itemTitle}>
+                    {item.title || item.name || 'اسم غير متوفر'}
+                  </Text>
+                  <Text style={styles.itemPrice}>
+                    ₪{item.price.toFixed(2)} x {item.quantity}
+                  </Text>
                 </View>
               </View>
             ))}
@@ -309,14 +322,13 @@ const CheckoutScreen: React.FC = () => {
             </View>
             <View style={[styles.summaryRow, styles.totalRow]}>
               <Text style={styles.totalLabel}>Total Amount</Text>
-              <Text style={styles.totalValue}>₪{(total + (shippingOption === 'westbank' ? 20 : 60)).toFixed(2)}</Text>
+              <Text style={styles.totalValue}>
+                ₪{(total + (shippingOption === 'westbank' ? 20 : 60)).toFixed(2)}
+              </Text>
             </View>
           </View>
 
-          <TouchableOpacity
-            style={styles.placeOrderButton}
-            onPress={handlePlaceOrder}
-          >
+          <TouchableOpacity style={styles.placeOrderButton} onPress={handlePlaceOrder}>
             <Text style={styles.placeOrderButtonText}>Place Order</Text>
           </TouchableOpacity>
         </ScrollView>
@@ -504,4 +516,3 @@ const styles = StyleSheet.create({
 });
 
 export default CheckoutScreen;
-
