@@ -16,14 +16,13 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.mh.giftify"
     },
-   "android": {
-  "adaptiveIcon": {
-    "foregroundImage": "./assets/images/adaptive-icon.png",
-    "backgroundColor": "#ffffff"
-  },
-  "package": "com.mh.giftify"
-},
-
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.mh.giftify"
+    },
     "web": {
       "bundler": "metro",
       "output": "static",
@@ -34,7 +33,8 @@
       "expo-font",
       "expo-build-properties",
       "@react-native-firebase/app",
-      "@react-native-firebase/auth"
+      "@react-native-firebase/auth",
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true

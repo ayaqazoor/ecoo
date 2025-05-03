@@ -1,10 +1,10 @@
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Switch } from "react-native";
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image } from "react-native";
 import React, { useState, useEffect } from "react";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { Colors } from "@/constants/Colors";
 import { auth, db } from "@/config/firebase";
 import { signOut, onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc } from "firebase/firestore";
 import { useRouter } from "expo-router";
 
 type Option = {
@@ -15,15 +15,13 @@ type Option = {
 const options: Option[] = [
   { title: "Manage Account", icon: "user" },
   { title: "Notifications", icon: "bell" },
-  { title: "Language", icon: "globe" },
-  { title: "Dark Mode", icon: "moon" },
+  { title: "Our Policies", icon: "file-text" }, // القسم الجديد
   { title: "Logout", icon: "log-out" },
 ];
 
 const ProfileScreen = () => {
   const [username, setUsername] = useState("");
   const [photoURL, setPhotoURL] = useState<string | null>(null);
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const router = useRouter();
 
@@ -32,13 +30,12 @@ const ProfileScreen = () => {
       if (user) {
         setUsername(user.displayName || user.email || "User");
         setPhotoURL(user.photoURL);
-        
-        // التحقق من دور المستخدم في Firebase
+
         try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          const userDoc = await getDoc(doc(db, "users", user.uid));
           const userData = userDoc.data();
-          console.log("User Data:", userData); // للتأكد من البيانات
-          setIsAdmin(userData?.role === 'admin');
+          console.log("User Data:", userData);
+          setIsAdmin(userData?.role === "admin");
         } catch (error) {
           console.error("Error checking admin status:", error);
           setIsAdmin(false);
@@ -63,17 +60,17 @@ const ProfileScreen = () => {
   const handleOptionPress = (item: Option) => {
     if (item.title === "Logout") {
       handleLogout();
-    } else if (item.title === "Dark Mode") {
-      setIsDarkMode((prev) => !prev);
     } else if (item.title === "Manage Account") {
       router.push("/ManageAccountScreen");
+    } else if (item.title === "Our Policies") {
+      router.push("/OurPoliciesScreen");
     } else {
       console.log(`Navigating to ${item.title}`);
     }
   };
 
   const handleAdminPanelPress = () => {
-    router.push('/AdminPanel');
+    router.push("/AdminPanel");
   };
 
   const renderHeader = () => (
@@ -92,7 +89,7 @@ const ProfileScreen = () => {
 
   const renderAdminButton = () => (
     isAdmin && (
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.adminButton}
         onPress={handleAdminPanelPress}
       >
@@ -110,14 +107,7 @@ const ProfileScreen = () => {
     >
       <Feather name={item.icon} size={22} color={Colors.primary} style={styles.icon} />
       <Text style={styles.optionText}>{item.title}</Text>
-      {item.title === "Dark Mode" ? (
-        <Switch
-          value={isDarkMode}
-          onValueChange={() => setIsDarkMode((prev) => !prev)}
-        />
-      ) : (
-        <Feather name="chevron-right" size={22} color={Colors.primary} />
-      )}
+      <Feather name="chevron-right" size={22} color={Colors.primary} />
     </TouchableOpacity>
   );
 
@@ -177,9 +167,9 @@ const styles = StyleSheet.create({
     color: Colors.primary,
   },
   adminButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F5F5F5",
     padding: 15,
     borderRadius: 10,
     marginTop: 20,
@@ -188,7 +178,7 @@ const styles = StyleSheet.create({
   adminButtonText: {
     marginLeft: 10,
     fontSize: 16,
-    color: '#8B5E3C',
-    fontWeight: '600',
+    color: "#8B5E3C",
+    fontWeight: "600",
   },
 });

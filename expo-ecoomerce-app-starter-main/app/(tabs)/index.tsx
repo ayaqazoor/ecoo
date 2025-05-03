@@ -23,6 +23,7 @@ const HomeScreen = (props: Props) => {
   const [flashSaleProducts, setFlashSaleProducts] = useState<ProductType[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     console.log('Component mounted, fetching data...');
@@ -67,7 +68,7 @@ const HomeScreen = (props: Props) => {
       
       const productsData = snapshot.docs.map((doc) => {
         const data = doc.data();
-        console.log(`Processing product:`, data);
+        console.log('Processing product:', data);
         
         return {
           id: doc.id,
@@ -122,7 +123,7 @@ const HomeScreen = (props: Props) => {
       
       const saleProductsData = snapshot.docs.map((doc) => {
         const data = doc.data();
-        console.log(`Processing sale product:`, data);
+        console.log('Processing sale product:', data);
         
         return {
           id: doc.id,
@@ -160,7 +161,8 @@ const HomeScreen = (props: Props) => {
             category: String(data.category || ''),
             categoryId: String(data.categoryId || ''),
             discount: Number(data.discount || 0),
-            originalPrice: Number(data.originalPrice || data.price || 0)
+            originalPrice: Number(data.originalPrice || data.price || 0),
+            productType: undefined
           });
         }
       });
@@ -242,71 +244,93 @@ const HomeScreen = (props: Props) => {
               style={styles.searchInput}
               placeholder="Search products..."
               value={searchQuery}
-              onChangeText={setSearchQuery}
+              onChangeText={(text) => {
+                setSearchQuery(text);
+                setIsSearching(text.length > 0);
+              }}
             />
+            {isSearching && (
+              <TouchableOpacity 
+                onPress={() => {
+                  setSearchQuery('');
+                  setIsSearching(false);
+                }}
+                style={styles.clearButton}
+              >
+                <Ionicons name="close-circle" size={20} color={Colors.gray} />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false}>
-          <View style={styles.sectionContainer}>
-            <Categories categories={categories} />
-          </View>
-
-          <View style={styles.sectionContainer}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Flash Sale</Text>
-              <TouchableOpacity onPress={() => router.push('/flashSale')}>
-                <Text style={styles.seeAllText}>See All</Text>
-              </TouchableOpacity>
-            </View>
-            {isLoading ? (
-              <ActivityIndicator size="large" color={Colors.primary} />
-            ) : (
-              <FlatList
-                data={flashSaleProducts}
-                renderItem={renderFlashSaleItem}
-                keyExtractor={(item) => item.id}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.flashSaleList}
-              />
-            )}
-          </View>
-
-          <View style={styles.sectionContainer}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Daily Routine</Text>
-              <TouchableOpacity onPress={() => router.push('../routine/TasksScreen')}>
-                <Text style={styles.sectionTitle}>See All</Text>
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity 
-              style={[styles.routineCard, { backgroundColor: Colors.lightbeige }]}
-              onPress={() => router.push('../routine/TasksScreen')}
-            >
-              <Image 
-                source={require('@/assets/images/routine.jpeg')} 
-                style={styles.routineImage}
-                resizeMode="cover"
-              />
-              <View style={styles.routineContent}>
-                <Text style={styles.routineTitle}>Your Daily Skin Care</Text>
-                <Text style={styles.routineDescription}>
-                  Follow our expert tips for healthy and glowing skin
-                </Text>
-                <View style={styles.routineFooter}>
-                  <View style={[styles.routineBadge, { backgroundColor: Colors.primary }]}>
-                    <Ionicons name="time-outline" size={16} color={Colors.white} />
-                    <Text style={[styles.routineBadgeText, { color: Colors.white }]}>Daily</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={24} color={Colors.gray} />
-                </View>
+          {!isSearching ? (
+            <>
+              <View style={styles.sectionContainer}>
+                <Categories categories={categories} />
               </View>
-            </TouchableOpacity>
-          </View>
+
+              <View style={styles.sectionContainer}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Flash Sale</Text>
+                  <TouchableOpacity onPress={() => router.push('/flashSale')}>
+                    <Text style={styles.seeAllText}>See All</Text>
+                  </TouchableOpacity>
+                </View>
+                {isLoading ? (
+                  <ActivityIndicator size="large" color={Colors.primary} />
+                ) : (
+                  <FlatList
+                    data={flashSaleProducts}
+                    renderItem={renderFlashSaleItem}
+                    keyExtractor={(item) => item.id}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.flashSaleList}
+                  />
+                )}
+              </View>
+
+              <View style={styles.sectionContainer}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Daily Routine</Text>
+                  <TouchableOpacity onPress={() => router.push('../routine/TasksScreen')}>
+                    <Text style={styles.sectionTitle}>See All</Text>
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity 
+                  style={[styles.routineCard, { backgroundColor: Colors.lightbeige }]}
+                  onPress={() => router.push('../routine/TasksScreen')}
+                >
+                  <Image 
+                    source={require('@/assets/images/routine.jpeg')} 
+                    style={styles.routineImage}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.routineContent}>
+                    <Text style={styles.routineTitle}>Your Daily Skin Care</Text>
+                    <Text style={styles.routineDescription}>
+                      Follow our expert tips for healthy and glowing skin
+                    </Text>
+                    <View style={styles.routineFooter}>
+                      <View style={[styles.routineBadge, { backgroundColor: Colors.primary }]}>
+                        <Ionicons name="time-outline" size={16} color={Colors.white} />
+                        <Text style={[styles.routineBadgeText, { color: Colors.white }]}>Daily</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={24} color={Colors.gray} />
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : null}
 
           <View style={styles.sectionContainer}>
-            <ProductList products={filteredProducts} flatlist={false} />
+            {isSearching ? (
+              <ProductList products={[...filteredProducts, ...filteredSaleProducts]} flatlist={false} />
+            ) : (
+              <ProductList products={filteredProducts} flatlist={false} />
+            )}
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -361,6 +385,9 @@ const styles = StyleSheet.create({
     flex: 1,
     height: '100%',
     fontSize: 16,
+  },
+  clearButton: {
+    marginLeft: 10,
   },
   sectionContainer: {
     marginBottom: 20,

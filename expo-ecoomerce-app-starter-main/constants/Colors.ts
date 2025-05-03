@@ -10,4 +10,5 @@ export const Colors = {
   beige: '#F6E7DF' , 
   lightbeige: "#F6EEEB",
   extraLightGray:'#e4e4e4',
+  red : '#8B0000',
 }

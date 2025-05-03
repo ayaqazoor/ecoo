@@ -1,16 +1,34 @@
-import { StyleSheet, Text, View, FlatList, TouchableOpacity } from 'react-native';
-import React from 'react';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
 import { ProductType } from '@/types/type';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ProductItem from '@/components/ProductItem';
 import { Colors } from '@/constants/Colors';
 
 type Props = {
-    products: ProductType[];
-    flatlist: boolean;
+  products: ProductType[];
+  flatlist: boolean;
 };
 
 const ProductList = ({ products, flatlist = true }: Props) => {
+  const [visibleProducts, setVisibleProducts] = useState<ProductType[]>([]);
+  const [limit, setLimit] = useState<number>(20);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setVisibleProducts(products.slice(0, limit));
+  }, [products, limit]);
+
+  const handleLoadMore = () => {
+    if (limit < products.length) {
+      setLoading(true);
+      setTimeout(() => {
+        setLimit(prev => prev + 20);
+        setLoading(false);
+      }, 500); // delay for UI effect
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.titlewrapper}>
@@ -19,23 +37,48 @@ const ProductList = ({ products, flatlist = true }: Props) => {
           <Text style={styles.titleBtn}>See All</Text>
         </TouchableOpacity>
       </View>
+
       {flatlist ? (
         <FlatList
-          data={products}
+          data={visibleProducts}
           numColumns={2}
           contentContainerStyle={{ justifyContent: 'space-between', marginBottom: 20 }}
           keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
           renderItem={({ index, item }) => (
             <ProductItem item={item} index={index} productType={'regular'} />
           )}
+          ListFooterComponent={
+            limit < products.length ? (
+              <View style={styles.loadMoreContainer}>
+                {loading ? (
+                  <ActivityIndicator size="small" color={Colors.primary} />
+                ) : (
+                  <TouchableOpacity onPress={handleLoadMore} style={styles.loadMoreBtn}>
+                    <Text style={styles.loadMoreText}>Load More</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : null
+          }
         />
       ) : (
         <View style={styles.itemsWrapper}>
-          {products.map((item, index) => (
+          {visibleProducts.map((item, index) => (
             <View key={index} style={styles.productWrapper}>
               <ProductItem item={item} index={index} productType={'regular'} />
             </View>
           ))}
+          {limit < products.length && (
+            <View style={styles.loadMoreContainer}>
+              {loading ? (
+                <ActivityIndicator size="small" color={Colors.primary} />
+              ) : (
+                <TouchableOpacity onPress={handleLoadMore} style={styles.loadMoreBtn}>
+                  <Text style={styles.loadMoreText}>Load More</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
         </View>
       )}
     </SafeAreaView>
@@ -81,5 +124,22 @@ const styles = StyleSheet.create({
     paddingLeft: 6,
     paddingRight: 7,
     marginBottom: 20,
+  },
+  loadMoreContainer: {
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  loadMoreBtn: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 15,
+    paddingHorizontal: 23,
+    borderRadius: 25,
+    marginBottom: 40,
+    alignItems:'center',
+  },
+  loadMoreText: {
+    color: '#fff',
+    fontWeight: '600',
+    
   },
 });
