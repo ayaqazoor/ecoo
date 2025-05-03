@@ -8,17 +8,40 @@ import { router } from 'expo-router';
 
 interface Product {
   id: string;
-  name: string;
+  title: string;
   price: number;
   description: string;
   images: string[];
   category: string;
+  categoryId: string;
+  discount?: number;
+  originalPrice?: number;
+  productType?: string;
+  stock?: number;
 }
+
+interface CategoryType {
+  id: string;
+  name: string;
+  image: string;
+}
+
+// Define CATEGORY_MAPPINGS with all 9 categories
+const CATEGORY_MAPPINGS: CategoryType[] = [
+  { id: '5', name: 'Makeup', image: '' },
+  { id: '1', name: 'Body Care', image: '' },
+  { id: '6', name: 'Hair Care', image: '' },
+  { id: '2', name: 'Skin Care', image: '' },
+  { id: '4', name: 'Handbags', image: '' },
+  { id: '9', name: 'Gifts', image: '' },
+  { id: '7', name: 'Perfumes', image: '' },
+  { id: '3', name: 'Accessories', image: '' },
+  { id: '8', name: 'Watches', image: '' },
+];
 
 const ProductsManagement = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
@@ -34,37 +57,42 @@ const ProductsManagement = () => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      console.log('Fetching products from Firebase...');
-      
-      const productsCollection = collection(db, 'products');
-      const querySnapshot = await getDocs(productsCollection);
-      
-      console.log('Number of products found:', querySnapshot.size);
-      
-      const productsList: Product[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        console.log('Product data:', data);
-        
-        productsList.push({
-          id: doc.id,
-          name: data.name || '',
+      console.log('🚀 Fetching all products from Firebase');
+
+      const productsRef = collection(db, 'products');
+      const snapshot = await getDocs(productsRef);
+
+      const fetchedProducts: Product[] = snapshot.docs.map(docSnap => {
+        const data = docSnap.data();
+        console.log('📄 Raw Firebase document:', { id: docSnap.id, ...data });
+        console.log('🔍 category.id type:', typeof data.category?.id, 'value:', data.category?.id);
+
+        // استخراج categoryId من category.id
+        const categoryId = data.category?.id ? String(data.category.id) : 'uncategorized';
+        // استخراج اسم الفئة من category.name أو تعيين من CATEGORY_MAPPINGS
+        const categoryName = data.category?.name || CATEGORY_MAPPINGS.find(c => c.id === categoryId)?.name || 'Uncategorized';
+
+        return {
+          id: docSnap.id,
+          title: data.title || data.name || '',
           price: data.price || 0,
           description: data.description || '',
           images: data.images || [],
-          category: data.category || 'uncategorized'
-        });
+          category: categoryName,
+          categoryId,
+          discount: data.discount || 0,
+          originalPrice: data.originalPrice || data.price || 0,
+          productType: data.productType || 'unknown',
+          stock: data.stock || 0,
+        };
       });
 
-      console.log('Products list:', productsList);
-      setProducts(productsList);
-      setFilteredProducts(productsList); // Initialize filtered products with all products
-      
-      // Extract unique categories
-      const uniqueCategories = Array.from(new Set(productsList.map(p => p.category)));
-      setCategories(['all', ...uniqueCategories]);
+      console.log('✅ Products fetched:', fetchedProducts.length);
+      console.log('📊 Product category IDs:', fetchedProducts.map(p => ({ id: p.id, categoryId: p.categoryId })));
+      setProducts(fetchedProducts);
+      setFilteredProducts(fetchedProducts);
     } catch (error) {
-      console.error('Error fetching products:', error);
+      console.error('❌ Error fetching products:', error);
       Alert.alert('Error', 'Failed to fetch products');
     } finally {
       setLoading(false);
@@ -72,68 +100,58 @@ const ProductsManagement = () => {
   };
 
   const filterProducts = () => {
-    console.log('Filtering products...');
-    console.log('Selected category:', selectedCategory);
-    console.log('Search query:', searchQuery);
-    
-    let filtered = [...products];
+    let filtered = products;
 
-    // Filter by category
+    // فلترة حسب الفئة
     if (selectedCategory !== 'all') {
-      filtered = filtered.filter(product => product.category === selectedCategory);
+      const selectedCategoryId = CATEGORY_MAPPINGS.find(c => c.name === selectedCategory)?.id;
+      if (!selectedCategoryId) {
+        console.warn('⚠️ No matching category ID found for:', selectedCategory);
+        setFilteredProducts([]);
+        return;
+      }
+      console.log('🔎 Filtering products by categoryId:', selectedCategoryId);
+      filtered = products.filter(p => p.categoryId === selectedCategoryId);
+      console.log('✅ Category filtered products:', filtered.length);
     }
 
-    // Filter by search query
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(product => 
-        product.name.toLowerCase().includes(query) ||
-        product.description.toLowerCase().includes(query)
+    // فلترة حسب البحث
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(p =>
+        p.title.toLowerCase().includes(q) || p.description.toLowerCase().includes(q)
       );
+      console.log('🔎 Search query:', q, 'Filtered products:', filtered.length);
     }
 
-    console.log('Filtered products:', filtered);
     setFilteredProducts(filtered);
   };
 
   const handleDeleteProduct = async (productId: string) => {
-    try {
-      Alert.alert(
-        'Delete Product',
-        'Are you sure you want to delete this product?',
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel'
-          },
-          {
-            text: 'Delete',
-            style: 'destructive',
-            onPress: async () => {
-              // Delete from Firebase
-              await deleteDoc(doc(db, 'products', productId));
-              
-              // Update local state
-              setProducts(products.filter(product => product.id !== productId));
-              
-              Alert.alert('Success', 'Product deleted successfully');
-            }
+    Alert.alert('Delete Product', 'Are you sure you want to delete this product?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteDoc(doc(db, 'products', productId));
+            setProducts(products.filter(p => p.id !== productId));
+            setFilteredProducts(filteredProducts.filter(p => p.id !== productId));
+            Alert.alert('Success', 'Product deleted successfully');
+          } catch (err) {
+            console.error('Error deleting product:', err);
+            Alert.alert('Error', 'Failed to delete product');
           }
-        ]
-      );
-    } catch (error) {
-      console.error('Error deleting product:', error);
-      Alert.alert('Error', 'Failed to delete product');
-    }
+        },
+      },
+    ]);
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={Colors.primary} />
         </TouchableOpacity>
         <Text style={styles.title}>Products Management</Text>
@@ -150,25 +168,28 @@ const ProductsManagement = () => {
           />
         </View>
 
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          style={styles.categoriesContainer}
-        >
-          {categories.map((category) => (
-            <TouchableOpacity
-              key={category}
-              style={[
-                styles.categoryButton,
-                selectedCategory === category && styles.selectedCategory
-              ]}
-              onPress={() => setSelectedCategory(category)}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesContainer}>
+          <TouchableOpacity
+            key="all"
+            style={[styles.categoryButton, selectedCategory === 'all' && styles.selectedCategory]}
+            onPress={() => setSelectedCategory('all')}
+          >
+            <Text
+              style={[styles.categoryText, selectedCategory === 'all' && styles.selectedCategoryText]}
             >
-              <Text style={[
-                styles.categoryText,
-                selectedCategory === category && styles.selectedCategoryText
-              ]}>
-                {category}
+              All
+            </Text>
+          </TouchableOpacity>
+          {CATEGORY_MAPPINGS.map(category => (
+            <TouchableOpacity
+              key={category.id}
+              style={[styles.categoryButton, selectedCategory === category.name && styles.selectedCategory]}
+              onPress={() => setSelectedCategory(category.name)}
+            >
+              <Text
+                style={[styles.categoryText, selectedCategory === category.name && styles.selectedCategoryText]}
+              >
+                {category.name}
               </Text>
             </TouchableOpacity>
           ))}
@@ -179,37 +200,41 @@ const ProductsManagement = () => {
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Loading products...</Text>
         </View>
+      ) : filteredProducts.length === 0 ? (
+        <View style={styles.noProductsContainer}>
+          <Text style={styles.noProductsText}>
+            No products found. Check if products have correct category IDs.
+          </Text>
+          <Text style={styles.debugText}>
+            Selected Category: {selectedCategory} (ID: {CATEGORY_MAPPINGS.find(c => c.name === selectedCategory)?.id || 'N/A'})
+          </Text>
+        </View>
       ) : (
         <ScrollView style={styles.productsList}>
-          {filteredProducts.length > 0 ? (
-            filteredProducts.map((product) => (
-              <View key={product.id} style={styles.productCard}>
-                {product.images && product.images.length > 0 && (
-                  <Image 
-                    source={{ uri: product.images[0] }} 
-                    style={styles.productImage}
-                  />
+          {filteredProducts.map(product => (
+            <View key={product.id} style={styles.productCard}>
+              <Image source={{ uri: product.images[0] }} style={styles.productImage} />
+              <View style={styles.productInfo}>
+                <Text style={styles.productName}>{product.title}</Text>
+                <Text style={styles.productPrice}>${product.price}</Text>
+                {product.discount ? (
+                  <Text style={styles.productDiscount}>Discount: {product.discount}%</Text>
+                ) : null}
+                <Text style={styles.productDescription}>{product.description}</Text>
+                <Text style={styles.productCategory}>Category: {product.category} (ID: {product.categoryId})</Text>
+                {product.stock !== undefined && (
+                  <Text style={styles.productStock}>Stock: {product.stock}</Text>
                 )}
-                <View style={styles.productInfo}>
-                  <Text style={styles.productName}>{product.name}</Text>
-                  <Text style={styles.productPrice}>₪{product.price}</Text>
-                  <Text style={styles.productDescription}>{product.description}</Text>
-                  <Text style={styles.productCategory}>Category: {product.category}</Text>
-                </View>
-                <TouchableOpacity 
-                  style={styles.deleteButton}
-                  onPress={() => handleDeleteProduct(product.id)}
-                >
-                  <Ionicons name="trash-outline" size={24} color="#fff" />
-                  <Text style={styles.deleteButtonText}>Delete</Text>
-                </TouchableOpacity>
               </View>
-            ))
-          ) : (
-            <View style={styles.noProductsContainer}>
-              <Text style={styles.noProductsText}>No products found</Text>
+              <TouchableOpacity
+                onPress={() => handleDeleteProduct(product.id)}
+                style={styles.deleteButton}
+              >
+                <Ionicons name="trash" size={20} color="#fff" />
+                <Text style={styles.deleteButtonText}>Delete</Text>
+              </TouchableOpacity>
             </View>
-          )}
+          ))}
         </ScrollView>
       )}
     </View>
@@ -224,7 +249,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 15,
+    padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
@@ -319,12 +344,22 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     marginBottom: 5,
   },
+  productDiscount: {
+    fontSize: 12,
+    color: Colors.primary,
+    marginBottom: 5,
+  },
   productDescription: {
     fontSize: 12,
     color: '#666',
     marginBottom: 5,
   },
   productCategory: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 5,
+  },
+  productStock: {
     fontSize: 12,
     color: '#666',
     marginBottom: 5,
@@ -353,7 +388,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
+    marginBottom: 10,
+  },
+  debugText: {
+    fontSize: 14,
+    color: '#ff4444',
+    textAlign: 'center',
   },
 });
 
-export default ProductsManagement; 
+export default ProductsManagement;

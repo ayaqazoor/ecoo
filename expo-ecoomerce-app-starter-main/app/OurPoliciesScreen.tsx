@@ -37,8 +37,6 @@ const OurPoliciesScreen = () => {
         </Text>
 
         <Text style={[styles.text, { marginTop: 8 }]}>
-
-            
           To request an exchange, please contact us via WhatsApp 📱 at:{" "}
           <Text style={{ fontWeight: "bold" }}>+972 59-537-5870</Text> 💬
         </Text>

@@ -33,6 +33,8 @@ export default function RootLayout() {
         <Stack.Screen name="TasksScreen" options={{ headerShown: false }} />
         <Stack.Screen name="MorningCareScreen" options={{ headerShown: false }} />
         <Stack.Screen name="OurPoliciesScreen" options={{ headerShown: false }} /> {/* ✅ تمت إضافة هذا السطر */}
+        <Stack.Screen name="ProductsManagement" options={{ headerShown: false }} /> {/* ✅ تمت إضافة هذا السطر */}
+
       </Stack>
     </GestureHandlerRootView>
   );

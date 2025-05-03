@@ -1,18 +1,16 @@
 import { StyleSheet, Text, View, FlatList, Image, ActivityIndicator, TouchableOpacity, TextInput } from 'react-native';
 import React, { useEffect, useState } from 'react';
-import { CategoryType, ProductType } from '@/types/type';
 import { router, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Header from '@/components/Header';
-import ProductItem from '@/components/ProductItem';
-import { Colors } from '@/constants/Colors';
-import ProductList from '@/components/ProductList';
-import Categories from '@/components/Categories';
-import FlashSale from '@/components/FlashSale';
-import { ScrollView } from 'react-native-gesture-handler';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '@/config/firebase';
 import { Ionicons } from '@expo/vector-icons';
+import Slider from '@react-native-community/slider';
+import { Colors } from '@/constants/Colors';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/config/firebase';
+import { ScrollView } from 'react-native';
+import Categories from '@/components/Categories';
+import ProductList from '@/components/ProductList';
+import { CategoryType, ProductType } from '@/types/type';
 
 type Props = {};
 
@@ -24,28 +22,50 @@ const HomeScreen = (props: Props) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [maxPrice, setMaxPrice] = useState(1000);
 
+  // Fetch data on component mount
   useEffect(() => {
-    console.log('Component mounted, fetching data...');
     fetchData();
   }, []);
 
+  // Update max price when products or sale products change
   useEffect(() => {
-    console.log('Products updated:', products);
-    console.log('Sale products updated:', saleProducts);
+    const allPrices = [...products, ...saleProducts].map(p => p.price);
+    const newMaxPrice = Math.ceil(Math.max(...allPrices, 1000));
+    setMaxPrice(newMaxPrice);
+    setPriceRange([0, newMaxPrice]);
   }, [products, saleProducts]);
 
+  // Log category selection and filtered products for debugging
+  useEffect(() => {
+    console.log('Selected Category ID:', selectedCategoryId);
+    console.log('Available Category IDs:', categories.map(c => ({ id: c.id, name: c.name })));
+    if (selectedCategoryId) {
+      const filteredCount = products.filter(p => p.categoryId === selectedCategoryId).length +
+                           saleProducts.filter(p => p.categoryId === selectedCategoryId).length;
+      console.log(`Products in category ${selectedCategoryId}: ${filteredCount}`);
+      // Log products with mismatched or undefined categoryId
+      const mismatchedProducts = [...products, ...saleProducts].filter(p => p.categoryId && !categories.some(c => c.id === p.categoryId));
+      const undefinedCategoryProducts = [...products, ...saleProducts].filter(p => !p.categoryId);
+      console.log('Products with invalid categoryId:', mismatchedProducts.map(p => ({ id: p.id, categoryId: p.categoryId })));
+      console.log('Products with undefined categoryId:', undefinedCategoryProducts.map(p => ({ id: p.id })));
+    }
+  }, [selectedCategoryId, categories, products, saleProducts]);
+
+  // Fetch all data from Firebase
   const fetchData = async () => {
     try {
-      console.log('Starting to fetch all data...');
       setIsLoading(true);
       await Promise.all([
         getProducts(),
         getCategories(),
         getSaleProducts(),
-        loadFlashSaleProducts()
+        loadFlashSaleProducts(),
       ]);
-      console.log('All data fetched successfully');
     } catch (error) {
       console.error('Error in fetchData:', error);
     } finally {
@@ -53,23 +73,27 @@ const HomeScreen = (props: Props) => {
     }
   };
 
+  // Helper function to normalize productType
+  const normalizeProductType = (productType: string | number | (string | number)[] | null | undefined): string => {
+    if (productType === null || productType === undefined) return 'unknown';
+    if (Array.isArray(productType)) return String(productType[0] || 'unknown');
+    return String(productType);
+  };
+
+  // Fetch products from Firebase
   const getProducts = async () => {
     try {
-      console.log('Starting to fetch products from Firebase...');
       const productsCollection = collection(db, 'products');
       const snapshot = await getDocs(productsCollection);
-      
+
       if (snapshot.empty) {
-        console.log('No products found in Firebase');
+        console.log('No products found in Firebase "products" collection');
         return;
       }
 
-      console.log(`Found ${snapshot.docs.length} products`);
-      
-      const productsData = snapshot.docs.map((doc) => {
+      const productsData: ProductType[] = snapshot.docs.map((doc) => {
         const data = doc.data();
-        console.log('Processing product:', data);
-        
+        console.log('Raw product data:', { id: doc.id, data }); // Log raw data
         return {
           id: doc.id,
           title: data.title || 'Untitled Product',
@@ -77,54 +101,65 @@ const HomeScreen = (props: Props) => {
           description: data.description || 'No description available',
           images: Array.isArray(data.images) ? data.images : [],
           category: data.category || 'Uncategorized',
-          categoryId: String(data.categoryId || '0'),
+          categoryId: data.categoryId ? String(data.categoryId) : 'uncategorized', // Default to 'uncategorized'
           discount: Number(data.discount) || 0,
-          originalPrice: Number(data.originalPrice) || Number(data.price) || 0
-        } as ProductType;
+          originalPrice: Number(data.originalPrice) || Number(data.price) || 0,
+          productType: normalizeProductType(data.productType),
+        };
       });
 
-      console.log('All products processed:', productsData);
       setProducts(productsData);
+      console.log('Product Category IDs:', productsData.map(p => ({ id: p.id, categoryId: p.categoryId })));
     } catch (error) {
       console.error('Error in getProducts:', error);
     }
   };
 
+  // Fetch categories from Firebase
   const getCategories = async () => {
     try {
       const categoriesCollection = collection(db, 'categories');
       const snapshot = await getDocs(categoriesCollection);
-      const categoriesData = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          name: data.name || '',
-          image: data.image || ''
-        } as CategoryType;
-      });
-      setCategories(categoriesData);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-    }
-  };
 
-  const getSaleProducts = async () => {
-    try {
-      console.log('Starting to fetch sale products from Firebase...');
-      const saleProductsCollection = collection(db, 'saleProducts');
-      const snapshot = await getDocs(saleProductsCollection);
-      
       if (snapshot.empty) {
-        console.log('No sale products found in Firebase');
+        console.log('No categories found in Firebase "categories" collection');
+        setCategories([{ id: 'uncategorized', name: 'Uncategorized', image: '' }]); // Fallback category
         return;
       }
 
-      console.log(`Found ${snapshot.docs.length} sale products`);
-      
-      const saleProductsData = snapshot.docs.map((doc) => {
+      const categoriesData: CategoryType[] = snapshot.docs.map((doc) => {
         const data = doc.data();
-        console.log('Processing sale product:', data);
-        
+        console.log('Raw category data:', { id: doc.id, data }); // Log raw data
+        return {
+          id: doc.id, // Use Firestore document ID as category ID
+          name: data.name || 'Unnamed Category',
+          image: data.image || '',
+        };
+      });
+
+      // Add uncategorized category
+      setCategories([...categoriesData, { id: 'uncategorized', name: 'Uncategorized', image: '' }]);
+      console.log('Fetched Categories:', categoriesData);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      setCategories([{ id: 'uncategorized', name: 'Uncategorized', image: '' }]);
+    }
+  };
+
+  // Fetch sale products from Firebase
+  const getSaleProducts = async () => {
+    try {
+      const saleProductsCollection = collection(db, 'saleProducts');
+      const snapshot = await getDocs(saleProductsCollection);
+
+      if (snapshot.empty) {
+        console.log('No sale products found in Firebase "saleProducts" collection');
+        return;
+      }
+
+      const saleProductsData: ProductType[] = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        console.log('Raw sale product data:', { id: doc.id, data }); // Log raw data
         return {
           id: doc.id,
           title: data.title || 'Untitled Sale Product',
@@ -132,71 +167,91 @@ const HomeScreen = (props: Props) => {
           description: data.description || 'No description available',
           images: Array.isArray(data.images) ? data.images : [],
           category: data.category || 'Uncategorized',
-          categoryId: String(data.categoryId || '0'),
+          categoryId: data.categoryId ? String(data.categoryId) : 'uncategorized', // Default to 'uncategorized'
           discount: Number(data.discount) || 0,
-          originalPrice: Number(data.originalPrice) || Number(data.price) || 0
-        } as ProductType;
+          originalPrice: Number(data.originalPrice) || Number(data.price) || 0,
+          productType: normalizeProductType(data.productType),
+        };
       });
 
-      console.log('All sale products processed:', saleProductsData);
       setSaleProducts(saleProductsData);
+      console.log('Sale Product Category IDs:', saleProductsData.map(p => ({ id: p.id, categoryId: p.categoryId })));
     } catch (error) {
       console.error('Error in getSaleProducts:', error);
     }
   };
 
+  // Fetch flash sale products from Firebase
   const loadFlashSaleProducts = async () => {
     try {
       const querySnapshot = await getDocs(collection(db, 'saleProducts'));
-      const productsList: ProductType[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        if (data && data.images && data.images.length > 0) {
-          productsList.push({
-            id: doc.id,
-            title: String(data.title || ''),
-            price: Number(data.price || 0),
-            description: String(data.description || ''),
-            images: Array.isArray(data.images) ? data.images : [],
-            category: String(data.category || ''),
-            categoryId: String(data.categoryId || ''),
-            discount: Number(data.discount || 0),
-            originalPrice: Number(data.originalPrice || data.price || 0),
-            productType: undefined
-          });
-        }
-      });
+
+      if (querySnapshot.empty) {
+        console.log('No flash sale products found in Firebase "saleProducts" collection');
+        return;
+      }
+
+      const productsList: ProductType[] = querySnapshot.docs
+        .map((doc) => {
+          const data = doc.data();
+          console.log('Raw flash sale product data:', { id: doc.id, data }); // Log raw data
+          if (data && data.images && data.images.length > 0) {
+            return {
+              id: doc.id,
+              title: String(data.title || ''),
+              price: Number(data.price || 0),
+              description: String(data.description || ''),
+              images: Array.isArray(data.images) ? data.images : [],
+              category: String(data.category || 'Uncategorized'),
+              categoryId: data.categoryId ? String(data.categoryId) : 'uncategorized', // Default to 'uncategorized'
+              discount: Number(data.discount || 0),
+              originalPrice: Number(data.originalPrice || data.price || 0),
+              productType: normalizeProductType(data.productType),
+            } as ProductType;
+          }
+          return null;
+        })
+        .filter((item) => item !== null) as ProductType[];
+
       setFlashSaleProducts(productsList);
+      console.log('Flash Sale Product Category IDs:', productsList.map(p => ({ id: p.id, categoryId: p.categoryId })));
     } catch (error) {
       console.error('Error fetching flash sale products:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const filteredProducts = products.filter(product =>
-    product.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter products based on search query, price range, and category
+  const filteredProducts = products.filter((product) => {
+    const matchesSearch = product.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1];
+    const matchesCategory = selectedCategoryId
+      ? product.categoryId === selectedCategoryId
+      : true;
+    return matchesSearch && matchesPrice && matchesCategory;
+  });
 
-  const filteredSaleProducts = saleProducts.filter(product =>
-    product.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredSaleProducts = saleProducts.filter((product) => {
+    const matchesSearch = product.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1];
+    const matchesCategory = selectedCategoryId
+      ? product.categoryId === selectedCategoryId
+      : true;
+    return matchesSearch && matchesPrice && matchesCategory;
+  });
 
+  // Render flash sale item
   const renderFlashSaleItem = ({ item }: { item: ProductType }) => {
     const originalPrice = item.originalPrice || item.price;
-    const discount = 15; // Fixed 15% discount
+    const discount = item.discount || 15; // Use item.discount if available, else fallback to 15%
     const discountedPrice = originalPrice - (originalPrice * (discount / 100));
 
     return (
       <TouchableOpacity
         style={styles.flashSaleItem}
-        onPress={() => router.push(`/product-details/${item.id}?productType=sale`)}
+        onPress={() => router.push(`/product-details/${item.id}?productType=${normalizeProductType(item.productType)}`)}
       >
         {item.images && item.images.length > 0 ? (
-          <Image
-            source={{ uri: item.images[0] }}
-            style={styles.flashSaleImage}
-          />
+          <Image source={{ uri: item.images[0] }} style={styles.flashSaleImage} />
         ) : (
           <View style={[styles.flashSaleImage, { backgroundColor: Colors.lightGray }]} />
         )}
@@ -205,12 +260,8 @@ const HomeScreen = (props: Props) => {
             {item.title}
           </Text>
           <View style={styles.priceContainer}>
-            <Text style={styles.currentPrice}>
-              ₪{discountedPrice.toFixed(2)}
-            </Text>
-            <Text style={styles.originalPrice}>
-              ₪{originalPrice.toFixed(2)}
-            </Text>
+            <Text style={styles.currentPrice}>₪{discountedPrice.toFixed(2)}</Text>
+            <Text style={styles.originalPrice}>₪{originalPrice.toFixed(2)}</Text>
             <View style={styles.discountBadge}>
               <Text style={styles.discountText}>-{discount}%</Text>
             </View>
@@ -233,8 +284,8 @@ const HomeScreen = (props: Props) => {
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.container}>
         <View style={styles.headerContainer}>
-          <Image 
-            source={require('@/assets/images/mhh.png')} 
+          <Image
+            source={require('@/assets/images/mhh.png')}
             style={styles.logo}
             resizeMode="contain"
           />
@@ -250,7 +301,7 @@ const HomeScreen = (props: Props) => {
               }}
             />
             {isSearching && (
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => {
                   setSearchQuery('');
                   setIsSearching(false);
@@ -261,10 +312,101 @@ const HomeScreen = (props: Props) => {
               </TouchableOpacity>
             )}
           </View>
+          <TouchableOpacity style={styles.filterButton} onPress={() => setShowFilters(!showFilters)}>
+            <Ionicons name="filter" size={24} color={Colors.primary} />
+          </TouchableOpacity>
         </View>
 
+        {showFilters && (
+          <View style={styles.filterContainer}>
+            <Text style={styles.filterTitle}>Filter Products</Text>
+            <View style={styles.filterSection}>
+              <Text style={styles.filterLabel}>
+                Price Range: ₪{priceRange[0].toFixed(0)} - ₪{priceRange[1].toFixed(0)}
+              </Text>
+              <Slider
+                style={styles.priceSlider}
+                minimumValue={0}
+                maximumValue={maxPrice}
+                step={10}
+                value={priceRange[1]}
+                onValueChange={(value) => setPriceRange([priceRange[0], value])}
+                minimumTrackTintColor={Colors.primary}
+                maximumTrackTintColor={Colors.gray}
+                thumbTintColor={Colors.primary}
+              />
+              <View style={styles.priceRangeInputs}>
+                <TextInput
+                  style={styles.priceInput}
+                  value={priceRange[0].toString()}
+                  onChangeText={(text) => {
+                    const value = Number(text) || 0;
+                    setPriceRange([Math.min(value, priceRange[1]), priceRange[1]]);
+                  }}
+                  keyboardType="numeric"
+                  placeholder="Min"
+                />
+                <Text style={styles.priceDash}>-</Text>
+                <TextInput
+                  style={styles.priceInput}
+                  value={priceRange[1].toString()}
+                  onChangeText={(text) => {
+                    const value = Number(text) || maxPrice;
+                    setPriceRange([priceRange[0], Math.max(value, priceRange[0])]);
+                  }}
+                  keyboardType="numeric"
+                  placeholder="Max"
+                />
+              </View>
+            </View>
+            <View style={styles.filterSection}>
+              <Text style={styles.filterLabel}>Category</Text>
+              {categories.length === 0 ? (
+                <Text style={styles.noCategoriesText}>
+                  No categories available. Please add categories to the Firebase "categories" collection.
+                </Text>
+              ) : (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
+                  <TouchableOpacity
+                    style={[styles.categoryButton, !selectedCategoryId && styles.categoryButtonSelected]}
+                    onPress={() => setSelectedCategoryId(null)}
+                  >
+                    <Text
+                      style={[
+                        styles.categoryButtonText,
+                        !selectedCategoryId && styles.categoryButtonTextSelected,
+                      ]}
+                    >
+                      All
+                    </Text>
+                  </TouchableOpacity>
+                  {categories.map((category) => (
+                    <TouchableOpacity
+                      key={category.id}
+                      style={[
+                        styles.categoryButton,
+                        selectedCategoryId === category.id && styles.categoryButtonSelected,
+                      ]}
+                      onPress={() => setSelectedCategoryId(category.id)}
+                    >
+                      <Text
+                        style={[
+                          styles.categoryButtonText,
+                          selectedCategoryId === category.id && styles.categoryButtonTextSelected,
+                        ]}
+                      >
+                        {category.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
+            </View>
+          </View>
+        )}
+
         <ScrollView showsVerticalScrollIndicator={false}>
-          {!isSearching ? (
+          {!isSearching && !showFilters ? (
             <>
               <View style={styles.sectionContainer}>
                 <Categories categories={categories} />
@@ -277,33 +419,29 @@ const HomeScreen = (props: Props) => {
                     <Text style={styles.seeAllText}>See All</Text>
                   </TouchableOpacity>
                 </View>
-                {isLoading ? (
-                  <ActivityIndicator size="large" color={Colors.primary} />
-                ) : (
-                  <FlatList
-                    data={flashSaleProducts}
-                    renderItem={renderFlashSaleItem}
-                    keyExtractor={(item) => item.id}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.flashSaleList}
-                  />
-                )}
+                <FlatList
+                  data={flashSaleProducts}
+                  renderItem={renderFlashSaleItem}
+                  keyExtractor={(item) => item.id}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.flashSaleList}
+                />
               </View>
 
               <View style={styles.sectionContainer}>
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionTitle}>Daily Routine</Text>
                   <TouchableOpacity onPress={() => router.push('../routine/TasksScreen')}>
-                    <Text style={styles.sectionTitle}>See All</Text>
+                    <Text style={styles.seeAllText}>See All</Text>
                   </TouchableOpacity>
                 </View>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.routineCard, { backgroundColor: Colors.lightbeige }]}
                   onPress={() => router.push('../routine/TasksScreen')}
                 >
-                  <Image 
-                    source={require('@/assets/images/routine.jpeg')} 
+                  <Image
+                    source={require('@/assets/images/routine.jpeg')}
                     style={styles.routineImage}
                     resizeMode="cover"
                   />
@@ -326,10 +464,22 @@ const HomeScreen = (props: Props) => {
           ) : null}
 
           <View style={styles.sectionContainer}>
-            {isSearching ? (
-              <ProductList products={[...filteredProducts, ...filteredSaleProducts]} flatlist={false} />
+            {products.length === 0 && saleProducts.length === 0 ? (
+              <Text style={styles.noProductsText}>
+                No products available. Please add products to the Firebase "products" or "saleProducts" collections.
+              </Text>
+            ) : (isSearching || showFilters) && filteredProducts.length === 0 && filteredSaleProducts.length === 0 ? (
+              <Text style={styles.noProductsText}>
+                No products found for this category. Ensure product category IDs match categories in Firebase.
+              </Text>
             ) : (
-              <ProductList products={filteredProducts} flatlist={false} />
+              <ProductList
+                products={(isSearching || showFilters ? [...filteredProducts, ...filteredSaleProducts] : filteredProducts).map(p => ({
+                  ...p,
+                  productType: normalizeProductType(p.productType), // Temporary fix for TypeScript errors
+                }))}
+                flatlist={false}
+              />
             )}
           </View>
         </ScrollView>
@@ -354,7 +504,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 10,
     paddingTop: 10,
-    gap: 15,
+    gap: 10,
     backgroundColor: Colors.lightbeige,
   },
   logo: {
@@ -370,10 +520,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     height: 40,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 3,
@@ -389,6 +536,92 @@ const styles = StyleSheet.create({
   clearButton: {
     marginLeft: 10,
   },
+  filterButton: {
+    padding: 10,
+  },
+  filterContainer: {
+    backgroundColor: Colors.white,
+    padding: 15,
+    marginHorizontal: 10,
+    marginVertical: 10,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  filterTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: Colors.primary,
+    marginBottom: 10,
+  },
+  filterSection: {
+    marginBottom: 15,
+  },
+  filterLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: Colors.black,
+    marginBottom: 5,
+  },
+  priceSlider: {
+    width: '100%',
+    height: 40,
+  },
+  priceRangeInputs: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  priceInput: {
+    width: 80,
+    height: 40,
+    borderWidth: 1,
+    borderColor: Colors.gray,
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    fontSize: 14,
+  },
+  priceDash: {
+    fontSize: 16,
+    color: Colors.gray,
+  },
+  categoryScroll: {
+    flexDirection: 'row',
+    paddingVertical: 5,
+  },
+  categoryButton: {
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: Colors.lightGray,
+    marginRight: 10,
+  },
+  categoryButtonSelected: {
+    backgroundColor: Colors.primary,
+  },
+  categoryButtonText: {
+    fontSize: 14,
+    color: Colors.black,
+  },
+  categoryButtonTextSelected: {
+    color: Colors.white,
+    fontWeight: '600',
+  },
+  noCategoriesText: {
+    fontSize: 14,
+    color: Colors.gray,
+    marginTop: 10,
+  },
+  noProductsText: {
+    fontSize: 16,
+    color: Colors.gray,
+    textAlign: 'center',
+    marginVertical: 20,
+  },
   sectionContainer: {
     marginBottom: 20,
   },
@@ -401,13 +634,13 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: "600",
+    fontWeight: '600',
     color: Colors.primary,
   },
   seeAllText: {
     color: Colors.primary,
     fontSize: 14,
-    fontWeight: "500",
+    fontWeight: '500',
   },
   routineCard: {
     flexDirection: 'row',
@@ -415,10 +648,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginTop: 10,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
     elevation: 5,
@@ -426,9 +656,7 @@ const styles = StyleSheet.create({
   routineImage: {
     width: 120,
     height: 120,
-    resizeMode: 'cover',
-    padding: 10 , 
-    borderRadius:30,
+    borderRadius: 30,
   },
   routineContent: {
     flex: 1,
