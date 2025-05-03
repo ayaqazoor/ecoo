@@ -14,9 +14,20 @@ import { CategoryType, ProductType } from '@/types/type';
 
 type Props = {};
 
+const CATEGORY_MAPPINGS: CategoryType[] = [
+  { id: '5', name: 'Makeup', image: '' },
+  { id: '1', name: 'Body Care', image: '' },
+  { id: '6', name: 'Hair Care', image: '' },
+  { id: '2', name: 'Skin Care', image: '' },
+  { id: '4', name: 'Handbags', image: '' },
+  { id: '9', name: 'Gifts', image: '' },
+  { id: '7', name: 'Perfumes', image: '' },
+  { id: '3', name: 'Accessories', image: '' },
+  { id: '8', name: 'Watches', image: '' },
+];
+
 const HomeScreen = (props: Props) => {
   const [products, setProducts] = useState<ProductType[]>([]);
-  const [categories, setCategories] = useState<CategoryType[]>([]);
   const [saleProducts, setSaleProducts] = useState<ProductType[]>([]);
   const [flashSaleProducts, setFlashSaleProducts] = useState<ProductType[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -43,18 +54,19 @@ const HomeScreen = (props: Props) => {
   // Log category selection and filtered products for debugging
   useEffect(() => {
     console.log('Selected Category ID:', selectedCategoryId);
-    console.log('Available Category IDs:', categories.map(c => ({ id: c.id, name: c.name })));
+    console.log('Available Category IDs:', CATEGORY_MAPPINGS.map(c => ({ id: c.id, name: c.name })));
     if (selectedCategoryId) {
       const filteredCount = products.filter(p => p.categoryId === selectedCategoryId).length +
-                           saleProducts.filter(p => p.categoryId === selectedCategoryId).length;
+                           saleProducts.filter(p => p.categoryId === selectedCategoryId).length +
+                           flashSaleProducts.filter(p => p.categoryId === selectedCategoryId).length;
       console.log(`Products in category ${selectedCategoryId}: ${filteredCount}`);
       // Log products with mismatched or undefined categoryId
-      const mismatchedProducts = [...products, ...saleProducts].filter(p => p.categoryId && !categories.some(c => c.id === p.categoryId));
-      const undefinedCategoryProducts = [...products, ...saleProducts].filter(p => !p.categoryId);
+      const mismatchedProducts = [...products, ...saleProducts, ...flashSaleProducts].filter(p => p.categoryId && !CATEGORY_MAPPINGS.some(c => c.id === p.categoryId));
+      const undefinedCategoryProducts = [...products, ...saleProducts, ...flashSaleProducts].filter(p => !p.categoryId);
       console.log('Products with invalid categoryId:', mismatchedProducts.map(p => ({ id: p.id, categoryId: p.categoryId })));
       console.log('Products with undefined categoryId:', undefinedCategoryProducts.map(p => ({ id: p.id })));
     }
-  }, [selectedCategoryId, categories, products, saleProducts]);
+  }, [selectedCategoryId, products, saleProducts, flashSaleProducts]);
 
   // Fetch all data from Firebase
   const fetchData = async () => {
@@ -62,7 +74,6 @@ const HomeScreen = (props: Props) => {
       setIsLoading(true);
       await Promise.all([
         getProducts(),
-        getCategories(),
         getSaleProducts(),
         loadFlashSaleProducts(),
       ]);
@@ -93,56 +104,31 @@ const HomeScreen = (props: Props) => {
 
       const productsData: ProductType[] = snapshot.docs.map((doc) => {
         const data = doc.data();
-        console.log('Raw product data:', { id: doc.id, data }); // Log raw data
+        console.log('📄 Raw product data:', { id: doc.id, ...data });
+        console.log('🔍 category.id type:', typeof data.category?.id, 'value:', data.category?.id);
+
+        const categoryId = data.category?.id ? String(data.category.id) : 'uncategorized';
+        const categoryName = data.category?.name || CATEGORY_MAPPINGS.find(c => c.id === categoryId)?.name || 'Uncategorized';
+
         return {
           id: doc.id,
-          title: data.title || 'Untitled Product',
+          title: data.title || data.name || 'Untitled Product',
           price: Number(data.price) || 0,
           description: data.description || 'No description available',
           images: Array.isArray(data.images) ? data.images : [],
-          category: data.category || 'Uncategorized',
-          categoryId: data.categoryId ? String(data.categoryId) : 'uncategorized', // Default to 'uncategorized'
+          category: categoryName,
+          categoryId,
           discount: Number(data.discount) || 0,
           originalPrice: Number(data.originalPrice) || Number(data.price) || 0,
           productType: normalizeProductType(data.productType),
+          stock: Number(data.stock) || 0,
         };
       });
 
       setProducts(productsData);
-      console.log('Product Category IDs:', productsData.map(p => ({ id: p.id, categoryId: p.categoryId })));
+      console.log('📊 Product Category IDs:', productsData.map(p => ({ id: p.id, categoryId: p.categoryId })));
     } catch (error) {
       console.error('Error in getProducts:', error);
-    }
-  };
-
-  // Fetch categories from Firebase
-  const getCategories = async () => {
-    try {
-      const categoriesCollection = collection(db, 'categories');
-      const snapshot = await getDocs(categoriesCollection);
-
-      if (snapshot.empty) {
-        console.log('No categories found in Firebase "categories" collection');
-        setCategories([{ id: 'uncategorized', name: 'Uncategorized', image: '' }]); // Fallback category
-        return;
-      }
-
-      const categoriesData: CategoryType[] = snapshot.docs.map((doc) => {
-        const data = doc.data();
-        console.log('Raw category data:', { id: doc.id, data }); // Log raw data
-        return {
-          id: doc.id, // Use Firestore document ID as category ID
-          name: data.name || 'Unnamed Category',
-          image: data.image || '',
-        };
-      });
-
-      // Add uncategorized category
-      setCategories([...categoriesData, { id: 'uncategorized', name: 'Uncategorized', image: '' }]);
-      console.log('Fetched Categories:', categoriesData);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-      setCategories([{ id: 'uncategorized', name: 'Uncategorized', image: '' }]);
     }
   };
 
@@ -159,23 +145,29 @@ const HomeScreen = (props: Props) => {
 
       const saleProductsData: ProductType[] = snapshot.docs.map((doc) => {
         const data = doc.data();
-        console.log('Raw sale product data:', { id: doc.id, data }); // Log raw data
+        console.log('📄 Raw sale product data:', { id: doc.id, ...data });
+        console.log('🔍 category.id type:', typeof data.category?.id, 'value:', data.category?.id);
+
+        const categoryId = data.category?.id ? String(data.category.id) : 'uncategorized';
+        const categoryName = data.category?.name || CATEGORY_MAPPINGS.find(c => c.id === categoryId)?.name || 'Uncategorized';
+
         return {
           id: doc.id,
-          title: data.title || 'Untitled Sale Product',
+          title: data.title || data.name || 'Untitled Sale Product',
           price: Number(data.price) || 0,
           description: data.description || 'No description available',
           images: Array.isArray(data.images) ? data.images : [],
-          category: data.category || 'Uncategorized',
-          categoryId: data.categoryId ? String(data.categoryId) : 'uncategorized', // Default to 'uncategorized'
+          category: categoryName,
+          categoryId,
           discount: Number(data.discount) || 0,
           originalPrice: Number(data.originalPrice) || Number(data.price) || 0,
           productType: normalizeProductType(data.productType),
+          stock: Number(data.stock) || 0,
         };
       });
 
       setSaleProducts(saleProductsData);
-      console.log('Sale Product Category IDs:', saleProductsData.map(p => ({ id: p.id, categoryId: p.categoryId })));
+      console.log('📊 Sale Product Category IDs:', saleProductsData.map(p => ({ id: p.id, categoryId: p.categoryId })));
     } catch (error) {
       console.error('Error in getSaleProducts:', error);
     }
@@ -194,19 +186,25 @@ const HomeScreen = (props: Props) => {
       const productsList: ProductType[] = querySnapshot.docs
         .map((doc) => {
           const data = doc.data();
-          console.log('Raw flash sale product data:', { id: doc.id, data }); // Log raw data
+          console.log('📄 Raw flash sale product data:', { id: doc.id, ...data });
+          console.log('🔍 category.id type:', typeof data.category?.id, 'value:', data.category?.id);
+
           if (data && data.images && data.images.length > 0) {
+            const categoryId = data.category?.id ? String(data.category.id) : 'uncategorized';
+            const categoryName = data.category?.name || CATEGORY_MAPPINGS.find(c => c.id === categoryId)?.name || 'Uncategorized';
+
             return {
               id: doc.id,
-              title: String(data.title || ''),
+              title: String(data.title || data.name || ''),
               price: Number(data.price || 0),
               description: String(data.description || ''),
               images: Array.isArray(data.images) ? data.images : [],
-              category: String(data.category || 'Uncategorized'),
-              categoryId: data.categoryId ? String(data.categoryId) : 'uncategorized', // Default to 'uncategorized'
+              category: categoryName,
+              categoryId,
               discount: Number(data.discount || 0),
               originalPrice: Number(data.originalPrice || data.price || 0),
               productType: normalizeProductType(data.productType),
+              stock: Number(data.stock) || 0,
             } as ProductType;
           }
           return null;
@@ -214,7 +212,7 @@ const HomeScreen = (props: Props) => {
         .filter((item) => item !== null) as ProductType[];
 
       setFlashSaleProducts(productsList);
-      console.log('Flash Sale Product Category IDs:', productsList.map(p => ({ id: p.id, categoryId: p.categoryId })));
+      console.log('📊 Flash Sale Product Category IDs:', productsList.map(p => ({ id: p.id, categoryId: p.categoryId })));
     } catch (error) {
       console.error('Error fetching flash sale products:', error);
     }
@@ -231,6 +229,15 @@ const HomeScreen = (props: Props) => {
   });
 
   const filteredSaleProducts = saleProducts.filter((product) => {
+    const matchesSearch = product.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1];
+    const matchesCategory = selectedCategoryId
+      ? product.categoryId === selectedCategoryId
+      : true;
+    return matchesSearch && matchesPrice && matchesCategory;
+  });
+
+  const filteredFlashSaleProducts = flashSaleProducts.filter((product) => {
     const matchesSearch = product.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1];
     const matchesCategory = selectedCategoryId
@@ -361,55 +368,69 @@ const HomeScreen = (props: Props) => {
             </View>
             <View style={styles.filterSection}>
               <Text style={styles.filterLabel}>Category</Text>
-              {categories.length === 0 ? (
-                <Text style={styles.noCategoriesText}>
-                  No categories available. Please add categories to the Firebase "categories" collection.
-                </Text>
-              ) : (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
+                <TouchableOpacity
+                  style={[styles.categoryButton, !selectedCategoryId && styles.categoryButtonSelected]}
+                  onPress={() => setSelectedCategoryId(null)}
+                >
+                  <Text
+                    style={[
+                      styles.categoryButtonText,
+                      !selectedCategoryId && styles.categoryButtonTextSelected,
+                    ]}
+                  >
+                    All
+                  </Text>
+                </TouchableOpacity>
+                {CATEGORY_MAPPINGS.map((category) => (
                   <TouchableOpacity
-                    style={[styles.categoryButton, !selectedCategoryId && styles.categoryButtonSelected]}
-                    onPress={() => setSelectedCategoryId(null)}
+                    key={category.id}
+                    style={[
+                      styles.categoryButton,
+                      selectedCategoryId === category.id && styles.categoryButtonSelected,
+                    ]}
+                    onPress={() => setSelectedCategoryId(category.id)}
                   >
                     <Text
                       style={[
                         styles.categoryButtonText,
-                        !selectedCategoryId && styles.categoryButtonTextSelected,
+                        selectedCategoryId === category.id && styles.categoryButtonTextSelected,
                       ]}
                     >
-                      All
+                      {category.name}
                     </Text>
                   </TouchableOpacity>
-                  {categories.map((category) => (
-                    <TouchableOpacity
-                      key={category.id}
-                      style={[
-                        styles.categoryButton,
-                        selectedCategoryId === category.id && styles.categoryButtonSelected,
-                      ]}
-                      onPress={() => setSelectedCategoryId(category.id)}
-                    >
-                      <Text
-                        style={[
-                          styles.categoryButtonText,
-                          selectedCategoryId === category.id && styles.categoryButtonTextSelected,
-                        ]}
-                      >
-                        {category.name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              )}
+                ))}
+              </ScrollView>
             </View>
           </View>
         )}
 
         <ScrollView showsVerticalScrollIndicator={false}>
-          {!isSearching && !showFilters ? (
+          {isSearching || showFilters ? (
+            <View style={styles.sectionContainer}>
+              {products.length === 0 && saleProducts.length === 0 && flashSaleProducts.length === 0 ? (
+                <Text style={styles.noProductsText}>
+                  No products available. Please add products to the Firebase "products" or "saleProducts" collections.
+                </Text>
+              ) : filteredProducts.length === 0 && filteredSaleProducts.length === 0 && filteredFlashSaleProducts.length === 0 ? (
+                <Text style={styles.noProductsText}>
+                  No products found for this category. Ensure product category IDs match categories defined.
+                </Text>
+              ) : (
+                <ProductList
+                  products={[...filteredProducts, ...filteredSaleProducts, ...filteredFlashSaleProducts].map(p => ({
+                    ...p,
+                    productType: normalizeProductType(p.productType),
+                  }))}
+                  flatlist={false}
+                />
+              )}
+            </View>
+          ) : (
             <>
               <View style={styles.sectionContainer}>
-                <Categories categories={categories} />
+                <Categories categories={CATEGORY_MAPPINGS} />
               </View>
 
               <View style={styles.sectionContainer}>
@@ -460,28 +481,24 @@ const HomeScreen = (props: Props) => {
                   </View>
                 </TouchableOpacity>
               </View>
-            </>
-          ) : null}
 
-          <View style={styles.sectionContainer}>
-            {products.length === 0 && saleProducts.length === 0 ? (
-              <Text style={styles.noProductsText}>
-                No products available. Please add products to the Firebase "products" or "saleProducts" collections.
-              </Text>
-            ) : (isSearching || showFilters) && filteredProducts.length === 0 && filteredSaleProducts.length === 0 ? (
-              <Text style={styles.noProductsText}>
-                No products found for this category. Ensure product category IDs match categories in Firebase.
-              </Text>
-            ) : (
-              <ProductList
-                products={(isSearching || showFilters ? [...filteredProducts, ...filteredSaleProducts] : filteredProducts).map(p => ({
-                  ...p,
-                  productType: normalizeProductType(p.productType), // Temporary fix for TypeScript errors
-                }))}
-                flatlist={false}
-              />
-            )}
-          </View>
+              <View style={styles.sectionContainer}>
+                {products.length === 0 && saleProducts.length === 0 ? (
+                  <Text style={styles.noProductsText}>
+                    No products available. Please add products to the Firebase "products" or "saleProducts" collections.
+                  </Text>
+                ) : (
+                  <ProductList
+                    products={filteredProducts.map(p => ({
+                      ...p,
+                      productType: normalizeProductType(p.productType),
+                    }))}
+                    flatlist={false}
+                  />
+                )}
+              </View>
+            </>
+          )}
         </ScrollView>
       </SafeAreaView>
     </>
