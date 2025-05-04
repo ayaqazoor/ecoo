@@ -180,7 +180,7 @@ const HomeScreen = (props: Props) => {
       setSaleProducts(saleProductsData);
       console.log('📊 Sale Product Category IDs:', saleProductsData.map(p => ({ id: p.id, categoryId: p.categoryId })));
     } catch (error) {
-      console.error('Error in getSaleProducts:', error);
+      console.error('Error in getSale personallySaleProducts:', error);
     }
   };
 
@@ -216,7 +216,7 @@ const HomeScreen = (props: Props) => {
               categoryId,
               discount: Number(data.discount || 0),
               originalPrice: Number(data.originalPrice || data.price || 0),
-              productType: normalizeProductType(data.productType),
+              productType: 'sale', // Force productType to 'sale' for flash sale
               stock: Number(data.stock) || 0,
             } as ProductType;
           }
@@ -225,7 +225,7 @@ const HomeScreen = (props: Props) => {
         .filter((item) => item !== null) as ProductType[];
 
       setFlashSaleProducts(productsList);
-      console.log('📊 Flash Sale Product Category IDs:', productsList.map(p => ({ id: p.id, categoryId: p.categoryId })));
+      console.log('📊 Flash Sale Products:', productsList.map(p => ({ id: p.id, title: p.title, productType: p.productType })));
     } catch (error) {
       console.error('Error fetching flash sale products:', error);
     }
@@ -268,7 +268,7 @@ const HomeScreen = (props: Props) => {
     return (
       <TouchableOpacity
         style={styles.flashSaleItem}
-        onPress={() => router.push(`/product-details/${item.id}?productType=${normalizeProductType(item.productType)}`)}
+        onPress={() => router.push(`/product-details/${item.id}?productType=sale`)}
       >
         {item.images && item.images.length > 0 ? (
           <Image source={{ uri: item.images[0] }} style={styles.flashSaleImage} />
@@ -426,7 +426,7 @@ const HomeScreen = (props: Props) => {
                 <Text style={styles.noProductsText}>
                   No products available. Please add products to the Firebase "products" or "saleProducts" collections.
                 </Text>
-              ) : filteredProducts.length === 0 && filteredSaleProducts.length === 0 && filteredFlashSaleProducts.length === 0 ? (
+              ) : filteredProducts.length === 0 && filteredSaleProducts.length === 0 && filteredFlashSaleProducts.length == 0 ? (
                 <Text style={styles.noProductsText}>
                   No products found for this category. Ensure product category IDs match categories defined.
                 </Text>
@@ -453,14 +453,18 @@ const HomeScreen = (props: Props) => {
                     <Text style={styles.seeAllText}>See All</Text>
                   </TouchableOpacity>
                 </View>
-                <FlatList
-                  data={flashSaleProducts}
-                  renderItem={renderFlashSaleItem}
-                  keyExtractor={(item) => item.id}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.flashSaleList}
-                />
+                {flashSaleProducts.length === 0 ? (
+                  <Text style={styles.noProductsText}>No products available for Flash Sale</Text>
+                ) : (
+                  <FlatList
+                    data={flashSaleProducts}
+                    renderItem={renderFlashSaleItem}
+                    keyExtractor={(item) => item.id}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.flashSaleList}
+                  />
+                )}
               </View>
 
               <View style={styles.sectionContainer}>

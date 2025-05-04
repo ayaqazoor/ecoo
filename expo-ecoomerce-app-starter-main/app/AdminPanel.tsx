@@ -711,6 +711,22 @@ const AdminPanel = () => {
             color: Colors.primary,
           },
           headerShadowVisible: false,
+          headerRight: () => (
+            <View style={{ flexDirection: 'row' }}>
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={() => router.push('/Reports' as any)}
+              >
+                <Ionicons name="bar-chart" size={24} color={Colors.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={() => router.push('/AddProduct' as any)}
+              >
+                <Ionicons name="add-circle" size={24} color={Colors.primary} />
+              </TouchableOpacity>
+            </View>
+          ),
         }}
       />
       <View style={styles.container}>

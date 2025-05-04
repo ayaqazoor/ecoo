@@ -76,11 +76,15 @@ const FlashSale = ({ products }: Props) => {
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={{ marginLeft: 20, paddingRight: 20 }}
                     keyExtractor={(item) => item.id?.toString()}
-                    renderItem={({ item, index }) => (
-                        <View style={{ marginRight: 20 }}>
-                            <ProductItem index={index} item={item} productType="regular" />
-                        </View>
-                    )}
+                    renderItem={({ item, index }) => {
+                        // Debug product being rendered
+                        console.log('Rendering FlashSale product:', { id: item.id, title: item.title, productType: 'sale' });
+                        return (
+                            <View style={{ marginRight: 20 }}>
+                                <ProductItem index={index} item={item} productType="sale" />
+                            </View>
+                        );
+                    }}
                 />
             )}
         </View>

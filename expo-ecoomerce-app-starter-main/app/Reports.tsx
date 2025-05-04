@@ -1,332 +1,276 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants/Colors';
-import { collection, getDocs, query, where, Timestamp } from 'firebase/firestore';
-import { db } from '@/config/firebase';
-import { router } from 'expo-router';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { collection, query, where, getDocs, Timestamp, DocumentData } from 'firebase/firestore';
+import { db } from '../config/firebase';
+import { Colors } from '../constants/Colors';
+
+interface Product {
+  name: string;
+  stock: number;
+  images?: string[];
+}
+
+interface OrderItem {
+  quantity: number;
+}
 
 interface Order {
-  id: string;
-  total: number;
-  date: Timestamp;
-  items: any[];
+  totalAmount: number;
+  items: OrderItem[];
+  createdAt: Timestamp;
 }
 
 const Reports = () => {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [dateFilter, setDateFilter] = useState<'day' | 'month' | 'year'>('day');
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [revenueFilter, setRevenueFilter] = useState<'all' | 'high' | 'low'>('all');
+  const [timeFilter, setTimeFilter] = useState<'today' | 'month' | 'year'>('today');
+  const [revenue, setRevenue] = useState<number>(0);
+  const [soldProducts, setSoldProducts] = useState<number>(0);
+  const [lowStockProducts, setLowStockProducts] = useState<Product[]>([]);
 
   useEffect(() => {
-    fetchOrders();
-  }, []);
+    fetchReportData();
+  }, [timeFilter]);
 
-  useEffect(() => {
-    filterOrders();
-  }, [dateFilter, selectedDate, revenueFilter, orders]);
-
-  const fetchOrders = async () => {
+  const fetchReportData = async () => {
     try {
-      setLoading(true);
-      const ordersCollection = collection(db, 'orders');
-      const querySnapshot = await getDocs(ordersCollection);
+      // حساب الإيرادات والمنتجات المباعة
+      const ordersRef = collection(db, 'orders');
+      let startDate = new Date();
       
-      const ordersList: Order[] = [];
+      switch (timeFilter) {
+        case 'today':
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case 'month':
+          startDate.setDate(1);
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case 'year':
+          startDate.setMonth(0, 1);
+          startDate.setHours(0, 0, 0, 0);
+          break;
+      }
+
+      const q = query(ordersRef, where('createdAt', '>=', Timestamp.fromDate(startDate)));
+      const querySnapshot = await getDocs(q);
+      
+      let totalRevenue = 0;
+      let totalSoldProducts = 0;
+      
       querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        ordersList.push({
-          id: doc.id,
-          total: data.total || 0,
-          date: data.date,
-          items: data.items || []
-        });
+        const order = doc.data() as any;
+        if (order.status === 'completed' && order.paymentConfirmed) {
+          totalRevenue += order.total ?? order.totalAmount ?? 0;
+          totalSoldProducts += Array.isArray(order.items)
+            ? order.items.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0)
+            : 0;
+        }
       });
 
-      setOrders(ordersList);
-      setFilteredOrders(ordersList);
+      setRevenue(totalRevenue);
+      setSoldProducts(totalSoldProducts);
+
+      // التحقق من المنتجات ذات المخزون المنخفض
+      const productsRef = collection(db, 'products');
+      const productsSnapshot = await getDocs(productsRef);
+      const lowStock: Product[] = [];
+      
+      productsSnapshot.forEach((doc) => {
+        const product = doc.data() as Product;
+        if (product.stock <= 3) {
+          lowStock.push(product);
+        }
+      });
+
+      setLowStockProducts(lowStock);
     } catch (error) {
-      console.error('Error fetching orders:', error);
-      Alert.alert('Error', 'Failed to fetch orders');
-    } finally {
-      setLoading(false);
+      console.error('Error fetching report data:', error);
     }
   };
 
-  const filterOrders = () => {
-    let filtered = [...orders];
-
-    // Filter by date
-    const startDate = new Date(selectedDate);
-    startDate.setHours(0, 0, 0, 0);
-
-    const endDate = new Date(selectedDate);
-    if (dateFilter === 'day') {
-      endDate.setHours(23, 59, 59, 999);
-    } else if (dateFilter === 'month') {
-      endDate.setMonth(endDate.getMonth() + 1);
-      endDate.setDate(0);
-      endDate.setHours(23, 59, 59, 999);
-    } else if (dateFilter === 'year') {
-      endDate.setFullYear(endDate.getFullYear() + 1);
-      endDate.setMonth(0);
-      endDate.setDate(0);
-      endDate.setHours(23, 59, 59, 999);
-    }
-
-    filtered = filtered.filter(order => {
-      const orderDate = order.date.toDate();
-      return orderDate >= startDate && orderDate <= endDate;
-    });
-
-    // Filter by revenue
-    if (revenueFilter === 'high') {
-      filtered.sort((a, b) => b.total - a.total);
-    } else if (revenueFilter === 'low') {
-      filtered.sort((a, b) => a.total - b.total);
-    }
-
-    setFilteredOrders(filtered);
-  };
-
-  const calculateTotalRevenue = () => {
-    return filteredOrders.reduce((sum, order) => sum + order.total, 0);
-  };
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+  const formatCurrency = (amount: number): string => {
+    return new Intl.NumberFormat('he-IL', {
+      style: 'currency',
+      currency: 'ILS'
+    }).format(amount);
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="arrow-back" size={24} color={Colors.primary} />
-        </TouchableOpacity>
         <Text style={styles.title}>Reports</Text>
       </View>
 
-      <View style={styles.filters}>
-        <View style={styles.dateFilterContainer}>
-          <TouchableOpacity
-            style={styles.dateButton}
-            onPress={() => setShowDatePicker(true)}
-          >
-            <Ionicons name="calendar" size={20} color={Colors.primary} />
-            <Text style={styles.dateText}>{formatDate(selectedDate)}</Text>
-          </TouchableOpacity>
+      <View style={styles.filterContainer}>
+        <TouchableOpacity
+          style={[styles.filterButton, timeFilter === 'today' && styles.activeFilter]}
+          onPress={() => setTimeFilter('today')}
+        >
+          <Text style={styles.filterText}>Today</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterButton, timeFilter === 'month' && styles.activeFilter]}
+          onPress={() => setTimeFilter('month')}
+        >
+          <Text style={styles.filterText}>This Month</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterButton, timeFilter === 'year' && styles.activeFilter]}
+          onPress={() => setTimeFilter('year')}
+        >
+          <Text style={styles.filterText}>This Year</Text>
+        </TouchableOpacity>
+      </View>
 
-          <View style={styles.filterButtons}>
-            <TouchableOpacity
-              style={[styles.filterButton, dateFilter === 'day' && styles.selectedFilter]}
-              onPress={() => setDateFilter('day')}
-            >
-              <Text style={[styles.filterText, dateFilter === 'day' && styles.selectedFilterText]}>Day</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterButton, dateFilter === 'month' && styles.selectedFilter]}
-              onPress={() => setDateFilter('month')}
-            >
-              <Text style={[styles.filterText, dateFilter === 'month' && styles.selectedFilterText]}>Month</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterButton, dateFilter === 'year' && styles.selectedFilter]}
-              onPress={() => setDateFilter('year')}
-            >
-              <Text style={[styles.filterText, dateFilter === 'year' && styles.selectedFilterText]}>Year</Text>
-            </TouchableOpacity>
-          </View>
+      <View style={styles.statsContainer}>
+        <View style={styles.statCard}>
+          <Text style={styles.statTitle}>Revenue</Text>
+          <Text style={styles.statValue}>{formatCurrency(revenue)}</Text>
         </View>
 
-        <View style={styles.revenueFilterContainer}>
-          <Text style={styles.filterLabel}>Revenue Filter:</Text>
-          <View style={styles.filterButtons}>
-            <TouchableOpacity
-              style={[styles.filterButton, revenueFilter === 'all' && styles.selectedFilter]}
-              onPress={() => setRevenueFilter('all')}
-            >
-              <Text style={[styles.filterText, revenueFilter === 'all' && styles.selectedFilterText]}>All</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterButton, revenueFilter === 'high' && styles.selectedFilter]}
-              onPress={() => setRevenueFilter('high')}
-            >
-              <Text style={[styles.filterText, revenueFilter === 'high' && styles.selectedFilterText]}>High</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterButton, revenueFilter === 'low' && styles.selectedFilter]}
-              onPress={() => setRevenueFilter('low')}
-            >
-              <Text style={[styles.filterText, revenueFilter === 'low' && styles.selectedFilterText]}>Low</Text>
-            </TouchableOpacity>
-          </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statTitle}>Products Sold</Text>
+          <Text style={styles.statValue}>{soldProducts}</Text>
         </View>
       </View>
 
-      <View style={styles.summaryContainer}>
-        <Text style={styles.summaryTitle}>Summary</Text>
-        <Text style={styles.summaryText}>Total Orders: {filteredOrders.length}</Text>
-        <Text style={styles.summaryText}>Total Revenue: ₪{calculateTotalRevenue()}</Text>
+      <View style={styles.lowStockContainer}>
+        <Text style={styles.sectionTitle}>Low Stock Products</Text>
+        {lowStockProducts.map((product, index) => {
+          const imageUrl = product.images && product.images.length > 0 ? product.images[0] : 'https://via.placeholder.com/48x48?text=No+Image';
+          const p = product as any;
+          const productName = p.name || p.title || p.productName || 'Unnamed Product';
+          return (
+            <View key={index} style={styles.lowStockItem}>
+              <Image source={{ uri: imageUrl }} style={styles.lowStockImage} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.productName}>{productName}</Text>
+                {product.stock <= 3 && (
+                  <Text style={styles.lowStockWarning}>Reorder Needed!</Text>
+                )}
+                <Text style={styles.lowStockStock}>Stock: {product.stock}</Text>
+              </View>
+            </View>
+          );
+        })}
       </View>
-
-      <ScrollView style={styles.ordersList}>
-        {filteredOrders.map((order) => (
-          <View key={order.id} style={styles.orderCard}>
-            <Text style={styles.orderDate}>
-              {order.date.toDate().toLocaleDateString()}
-            </Text>
-            <Text style={styles.orderTotal}>₪{order.total}</Text>
-            <Text style={styles.orderItems}>
-              {order.items.length} items
-            </Text>
-          </View>
-        ))}
-      </ScrollView>
-
-      {showDatePicker && (
-        <DateTimePicker
-          value={selectedDate}
-          mode="date"
-          display="default"
-          onChange={(event: DateTimePickerEvent, date?: Date) => {
-            setShowDatePicker(false);
-            if (date) {
-              setSelectedDate(date);
-            }
-          }}
-        />
-      )}
-    </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.background,
+    direction: 'ltr',
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 15,
+    padding: 20,
+    backgroundColor: Colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  backButton: {
-    marginRight: 15,
+    borderBottomColor: Colors.extraLightGray,
+    alignItems: 'flex-start',
   },
   title: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
+    textAlign: 'left',
     color: Colors.primary,
   },
-  filters: {
+  filterContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
     padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  dateFilterContainer: {
-    marginBottom: 15,
-  },
-  dateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  dateText: {
-    marginLeft: 10,
-    fontSize: 16,
-    color: Colors.primary,
-  },
-  filterButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    backgroundColor: Colors.white,
+    marginTop: 10,
+    gap: 10,
   },
   filterButton: {
-    flex: 1,
     padding: 10,
-    borderRadius: 8,
-    backgroundColor: '#f5f5f5',
-    marginHorizontal: 5,
-    alignItems: 'center',
+    borderRadius: 20,
+    backgroundColor: Colors.lightbeige,
   },
-  selectedFilter: {
+  activeFilter: {
     backgroundColor: Colors.primary,
   },
   filterText: {
-    color: '#666',
+    color: Colors.black,
+    textAlign: 'left',
   },
-  selectedFilterText: {
-    color: '#fff',
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    padding: 20,
+    gap: 10,
   },
-  revenueFilterContainer: {
-    marginTop: 10,
-  },
-  filterLabel: {
-    fontSize: 16,
-    marginBottom: 10,
-    color: '#666',
-  },
-  summaryContainer: {
-    padding: 15,
-    backgroundColor: '#f5f5f5',
-    margin: 15,
+  statCard: {
+    backgroundColor: Colors.white,
+    padding: 20,
     borderRadius: 10,
-  },
-  summaryTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: Colors.primary,
-  },
-  summaryText: {
-    fontSize: 16,
-    marginBottom: 5,
-    color: '#666',
-  },
-  ordersList: {
-    flex: 1,
-    padding: 15,
-  },
-  orderCard: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 15,
-    shadowColor: '#000',
+    width: '45%',
+    alignItems: 'flex-start',
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 2,
   },
-  orderDate: {
+  statTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
-  orderTotal: {
-    fontSize: 18,
     color: Colors.primary,
-    marginBottom: 5,
+    marginBottom: 4,
+    textAlign: 'left',
+    fontWeight: 'bold',
   },
-  orderItems: {
+  statValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.primary,
+    textAlign: 'left',
+    marginBottom: 2,
+  },
+  lowStockContainer: {
+    padding: 20,
+    backgroundColor: Colors.white,
+    marginTop: 10,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    textAlign: 'left',
+    color: Colors.primary,
+  },
+  lowStockItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.extraLightGray,
+    gap: 12,
+  },
+  lowStockImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    marginRight: 12,
+    backgroundColor: Colors.extraLightGray,
+  },
+  productName: {
     fontSize: 14,
-    color: '#666',
+    textAlign: 'left',
+    color: Colors.primary,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  lowStockWarning: {
+    color: Colors.red,
+    fontWeight: 'bold',
+    textAlign: 'left',
+  },
+  lowStockStock: {
+    color: Colors.gray,
+    textAlign: 'left',
   },
 });
 
