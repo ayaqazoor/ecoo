@@ -15,15 +15,15 @@ import { CategoryType, ProductType } from '@/types/type';
 type Props = {};
 
 const CATEGORY_MAPPINGS: CategoryType[] = [
-  { id: '5', name: 'Makeup', image: '' },
-  { id: '1', name: 'Body Care', image: '' },
-  { id: '6', name: 'Hair Care', image: '' },
-  { id: '2', name: 'Skin Care', image: '' },
-  { id: '4', name: 'Handbags', image: '' },
-  { id: '9', name: 'Gifts', image: '' },
-  { id: '7', name: 'Perfumes', image: '' },
-  { id: '3', name: 'Accessories', image: '' },
-  { id: '8', name: 'Watches', image: '' },
+  { id: '5', name: 'Makeup', image: 'https://i.imgur.com/noVwrND.jpeg' },
+  { id: '1', name: 'Body Care', image: 'https://i.imgur.com/KLzx1cJ.jpeg' },
+  { id: '6', name: 'Hair Care', image: 'https://i.imgur.com/C00V1xi.jpeg' },
+  { id: '2', name: 'Skin Care', image: 'https://i.imgur.com/4Sl0T57.jpeg' },
+  { id: '4', name: 'Handbags', image: 'https://i.imgur.com/4HNOht7.jpeg' },
+  { id: '9', name: 'Gifts', image: 'https://i.imgur.com/kzRtLnL.jpeg' },
+  { id: '7', name: 'Perfumes', image: 'https://i.imgur.com/f9HHKw0.jpeg' },
+  { id: '3', name: 'Accessories', image: 'https://i.imgur.com/GGb2nRQ.jpeg' },
+  { id: '8', name: 'Watches', image: 'https://i.imgur.com/6ICnLqz.jpeg' },
 ];
 
 const HomeScreen = (props: Props) => {
@@ -61,10 +61,17 @@ const HomeScreen = (props: Props) => {
                            flashSaleProducts.filter(p => p.categoryId === selectedCategoryId).length;
       console.log(`Products in category ${selectedCategoryId}: ${filteredCount}`);
       // Log products with mismatched or undefined categoryId
-      const mismatchedProducts = [...products, ...saleProducts, ...flashSaleProducts].filter(p => p.categoryId && !CATEGORY_MAPPINGS.some(c => c.id === p.categoryId));
+      const mismatchedProducts = [...products, ...saleProducts, ...flashSaleProducts].filter(
+        p => p.categoryId && !CATEGORY_MAPPINGS.some(c => c.id === p.categoryId)
+      );
       const undefinedCategoryProducts = [...products, ...saleProducts, ...flashSaleProducts].filter(p => !p.categoryId);
       console.log('Products with invalid categoryId:', mismatchedProducts.map(p => ({ id: p.id, categoryId: p.categoryId })));
       console.log('Products with undefined categoryId:', undefinedCategoryProducts.map(p => ({ id: p.id })));
+      // Highlight Gifts and Handbags specifically
+      const giftsProducts = [...products, ...saleProducts, ...flashSaleProducts].filter(p => p.categoryId === '9');
+      const handbagsProducts = [...products, ...saleProducts, ...flashSaleProducts].filter(p => p.categoryId === '4');
+      console.log('Gifts Products (categoryId: 9):', giftsProducts.map(p => ({ id: p.id, title: p.title })));
+      console.log('Handbags Products (categoryId: 4):', handbagsProducts.map(p => ({ id: p.id, title: p.title })));
     }
   }, [selectedCategoryId, products, saleProducts, flashSaleProducts]);
 
@@ -108,7 +115,9 @@ const HomeScreen = (props: Props) => {
         console.log('🔍 category.id type:', typeof data.category?.id, 'value:', data.category?.id);
 
         const categoryId = data.category?.id ? String(data.category.id) : 'uncategorized';
-        const categoryName = data.category?.name || CATEGORY_MAPPINGS.find(c => c.id === categoryId)?.name || 'Uncategorized';
+        const categoryName = data.category?.name || 
+                            CATEGORY_MAPPINGS.find(c => c.id === categoryId)?.name || 
+                            'Uncategorized';
 
         return {
           id: doc.id,
@@ -149,7 +158,9 @@ const HomeScreen = (props: Props) => {
         console.log('🔍 category.id type:', typeof data.category?.id, 'value:', data.category?.id);
 
         const categoryId = data.category?.id ? String(data.category.id) : 'uncategorized';
-        const categoryName = data.category?.name || CATEGORY_MAPPINGS.find(c => c.id === categoryId)?.name || 'Uncategorized';
+        const categoryName = data.category?.name || 
+                            CATEGORY_MAPPINGS.find(c => c.id === categoryId)?.name || 
+                            'Uncategorized';
 
         return {
           id: doc.id,
@@ -191,7 +202,9 @@ const HomeScreen = (props: Props) => {
 
           if (data && data.images && data.images.length > 0) {
             const categoryId = data.category?.id ? String(data.category.id) : 'uncategorized';
-            const categoryName = data.category?.name || CATEGORY_MAPPINGS.find(c => c.id === categoryId)?.name || 'Uncategorized';
+            const categoryName = data.category?.name || 
+                                CATEGORY_MAPPINGS.find(c => c.id === categoryId)?.name || 
+                                'Uncategorized';
 
             return {
               id: doc.id,

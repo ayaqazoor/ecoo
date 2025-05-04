@@ -4,9 +4,45 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { Colors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { getAuth } from 'firebase/auth';
+
+// Interface for order item
+interface OrderItem {
+  productId: string;
+  name: string;
+  images: string[];
+  price: number;
+  quantity: number;
+}
+
+// Interface for order
+interface Order {
+  id?: string; // Optional id, added after Firestore save
+  userId: string;
+  items: OrderItem[];
+  total: number;
+  customerName: string;
+  customerPhone: string;
+  customerAddress: string;
+  customerCity: string;
+  shippingInfo: {
+    fullName: string;
+    phone: string;
+    address: string;
+    city: string;
+    region: string;
+  };
+  paymentInfo: {
+    method: string;
+    cardNumber?: string;
+    expiryDate?: string;
+    cvv?: string;
+  };
+  status: string;
+  createdAt: Date;
+}
 
 const CheckoutScreen: React.FC = () => {
   const headerHeight = useHeaderHeight();
@@ -55,6 +91,48 @@ const CheckoutScreen: React.FC = () => {
     }));
   };
 
+  // Function to send user thank-you notification
+  const sendUserOrderConfirmation = async (order: Order) => {
+    try {
+      const userDoc = await getDocs(query(
+        collection(db, 'users'),
+        where('uid', '==', order.userId)
+      ));
+      const userToken = userDoc.docs[0]?.data().expoPushToken;
+
+      if (!userToken) {
+        console.log('No push token for user:', order.userId);
+        return;
+      }
+
+      const itemsSummary = order.items
+        .map((item: OrderItem) => `${item.name} (الكمية: ${item.quantity})`)
+        .join(', ');
+
+      const message = {
+        to: userToken,
+        sound: 'default',
+        title: 'شكراً لتسوقك من M&H Store!',
+        body: `شكراً لشرائك! طلبيتك: ${itemsSummary}`,
+        data: { orderId: order.id || '' },
+      };
+
+      const response = await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(message),
+      });
+
+      const result = await response.json();
+      console.log('User order confirmation sent:', result);
+    } catch (error) {
+      console.error('Error sending user order confirmation:', error);
+    }
+  };
+
   const handlePlaceOrder = async () => {
     try {
       if (!formData.fullName || !formData.phone || !formData.address || !formData.city) {
@@ -82,15 +160,15 @@ const CheckoutScreen: React.FC = () => {
       // Create a detailed item list with all necessary fields including images
       const orderItems = cartItems.map(item => ({
         productId: item.productId || item.id,
-        name: item.name || item.title || '', // Store the product name as shown in checkout
+        name: item.name || item.title || '',
         images: item.images ? item.images : [item.image],
         price: item.price,
         quantity: item.quantity,
       }));
 
-      const orderData = {
+      const orderData: Order = {
         userId: user.uid,
-        items: orderItems,       // Store all product details including images
+        items: orderItems,
         total: finalTotal,
         customerName: formData.fullName,
         customerPhone: formData.phone,
@@ -116,7 +194,11 @@ const CheckoutScreen: React.FC = () => {
       };
 
       const ordersRef = collection(db, 'orders');
-      await addDoc(ordersRef, orderData);
+      const orderRef = await addDoc(ordersRef, orderData);
+      orderData.id = orderRef.id; // Add order ID to orderData
+
+      // Send user confirmation notification
+      await sendUserOrderConfirmation(orderData);
 
       Alert.alert(
         'Success',
