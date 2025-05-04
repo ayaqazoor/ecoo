@@ -15,7 +15,7 @@ const OurPoliciesScreen = () => {
         <TouchableOpacity onPress={() => router.back()} style={styles.backIcon}>
           <Ionicons name="chevron-back" size={28} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerText}>📜 Our Policies</Text>
+        <Text style={styles.headerText}>Our Policies</Text>
       </View>
 
       {/* Content */}
