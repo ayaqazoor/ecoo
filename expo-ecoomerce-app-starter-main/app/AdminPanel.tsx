@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { router } from 'expo-router';
 import { Stack } from 'expo-router';
-import { collection, getDocs, query, where, getFirestore, orderBy, updateDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, query, where, getFirestore, orderBy, updateDoc, doc, Timestamp } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
 const styles = StyleSheet.create({
@@ -43,7 +43,7 @@ const styles = StyleSheet.create({
   },
   tabText: {
     marginLeft: 8,
-    fontSize: 16,
+    fontSize: 14,
     color: Colors.primary,
   },
   activeTabText: {
@@ -287,6 +287,120 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 8,
   },
+  // Reports styles
+  reportsContainer: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    direction: 'ltr',
+  },
+  reportsHeader: {
+    padding: 20,
+    backgroundColor: Colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.extraLightGray,
+    alignItems: 'flex-start',
+  },
+  reportsTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'left',
+    color: Colors.primary,
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    padding: 15,
+    backgroundColor: Colors.white,
+    marginTop: 10,
+    gap: 10,
+  },
+  filterButton: {
+    padding: 10,
+    borderRadius: 20,
+    backgroundColor: Colors.lightbeige,
+  },
+  activeFilter: {
+    backgroundColor: Colors.primary,
+  },
+  filterText: {
+    color: Colors.black,
+    textAlign: 'left',
+  },
+  reportsStatsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    padding: 20,
+    gap: 10,
+  },
+  reportsStatCard: {
+    backgroundColor: Colors.white,
+    padding: 20,
+    borderRadius: 10,
+    width: '45%',
+    alignItems: 'flex-start',
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  reportsStatTitle: {
+    fontSize: 16,
+    color: Colors.primary,
+    marginBottom: 4,
+    textAlign: 'left',
+    fontWeight: 'bold',
+  },
+  reportsStatValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.primary,
+    textAlign: 'left',
+    marginBottom: 2,
+  },
+  lowStockContainer: {
+    padding: 20,
+    backgroundColor: Colors.white,
+    marginTop: 10,
+  },
+  reportsSectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    textAlign: 'left',
+    color: Colors.primary,
+  },
+  lowStockItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.extraLightGray,
+    gap: 12,
+  },
+  lowStockImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    marginRight: 12,
+    backgroundColor: Colors.extraLightGray,
+  },
+  reportsProductName: {
+    fontSize: 14,
+    textAlign: 'left',
+    color: Colors.primary,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  lowStockWarning: {
+    color: Colors.red,
+    fontWeight: 'bold',
+    textAlign: 'left',
+  },
+  lowStockStock: {
+    color: Colors.gray,
+    textAlign: 'left',
+  },
 });
 
 interface OrderItem {
@@ -309,6 +423,28 @@ interface Order {
   createdAt: Date;
 }
 
+interface Product {
+  id: string;
+  name: string;
+  stock: number;
+  images?: string[];
+  title?: string;
+  productName?: string;
+}
+
+interface ReportsOrderItem {
+  quantity: number;
+}
+
+interface ReportsOrder {
+  totalAmount?: number;
+  total?: number;
+  items: ReportsOrderItem[];
+  createdAt: Timestamp;
+  status: string;
+  paymentConfirmed: boolean;
+}
+
 const AdminPanel = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -320,18 +456,22 @@ const AdminPanel = () => {
     totalRevenue: 0
   });
   const [orders, setOrders] = useState<Order[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+
+  // Reports state
+  const [timeFilter, setTimeFilter] = useState<'today' | 'month' | 'year'>('today');
+  const [revenue, setRevenue] = useState<number>(0);
+  const [soldProducts, setSoldProducts] = useState<number>(0);
+  const [lowStockProducts, setLowStockProducts] = useState<Product[]>([]);
 
   const db = getFirestore();
   const auth = getAuth();
 
   const fetchStats = async () => {
     try {
-      // Fetch total products
       const productsSnapshot = await getDocs(collection(db, 'products'));
       const totalProducts = productsSnapshot.size;
 
-      // Fetch today's orders
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const ordersQuery = query(
@@ -341,11 +481,9 @@ const AdminPanel = () => {
       const ordersSnapshot = await getDocs(ordersQuery);
       const dailyOrders = ordersSnapshot.size;
 
-      // Fetch all orders for total revenue calculation
       const allOrdersQuery = query(collection(db, 'orders'));
       const allOrdersSnapshot = await getDocs(allOrdersQuery);
       
-      // Calculate total revenue from all completed and payment-confirmed orders
       let totalRevenue = 0;
       allOrdersSnapshot.forEach(doc => {
         const order = doc.data();
@@ -354,7 +492,6 @@ const AdminPanel = () => {
         }
       });
 
-      // Fetch total users
       const usersSnapshot = await getDocs(collection(db, 'users'));
       const totalUsers = usersSnapshot.size;
 
@@ -367,6 +504,68 @@ const AdminPanel = () => {
     } catch (error) {
       console.error('Error fetching stats:', error);
       Alert.alert('Error', 'Failed to fetch statistics');
+    }
+  };
+
+  const fetchReportsData = async () => {
+    try {
+      const ordersRef = collection(db, 'orders');
+      let startDate = new Date();
+      
+      switch (timeFilter) {
+        case 'today':
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case 'month':
+          startDate.setDate(1);
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case 'year':
+          startDate.setMonth(0, 1);
+          startDate.setHours(0, 0, 0, 0);
+          break;
+      }
+
+      const q = query(ordersRef, where('createdAt', '>=', Timestamp.fromDate(startDate)));
+      const querySnapshot = await getDocs(q);
+      
+      let totalRevenue = 0;
+      let totalSoldProducts = 0;
+      
+      querySnapshot.forEach((doc) => {
+        const order = doc.data() as ReportsOrder;
+        if (order.status === 'completed' && order.paymentConfirmed) {
+          totalRevenue += order.total ?? order.totalAmount ?? 0;
+          totalSoldProducts += Array.isArray(order.items)
+            ? order.items.reduce((sum: number, item: ReportsOrderItem) => sum + (item.quantity || 0), 0)
+            : 0;
+        }
+      });
+
+      setRevenue(totalRevenue);
+      setSoldProducts(totalSoldProducts);
+
+      const productsRef = collection(db, 'products');
+      const productsSnapshot = await getDocs(productsRef);
+      const lowStock: Product[] = [];
+      
+      productsSnapshot.forEach((doc) => {
+        const product = doc.data() as Product;
+        if (product.stock <= 3) {
+          lowStock.push({
+            id: doc.id,
+            name: product.name || product.title || product.productName || 'Unnamed Product',
+            stock: product.stock,
+            images: product.images,
+            title: product.title,
+            productName: product.productName
+          });
+        }
+      });
+
+      setLowStockProducts(lowStock);
+    } catch (error) {
+      console.error('Error fetching report data:', error);
     }
   };
 
@@ -387,66 +586,73 @@ const AdminPanel = () => {
   }, [isAdmin]);
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const ordersQuery = query(
-          collection(db, 'orders'),
-          orderBy('createdAt', 'desc')
-        );
-        const ordersSnapshot = await getDocs(ordersQuery);
-        const ordersData = ordersSnapshot.docs.map(doc => {
-          const data = doc.data();
-          console.log('Order Data:', data); // Debug log
-          const order: Order = {
-            id: doc.id,
-            customerName: data.user?.name || data.customerName || 'غير معروف',
-            customerPhone: data.user?.phone || data.customerPhone || 'غير معروف',
-            customerAddress: data.user?.address || data.customerAddress || 'غير معروف',
-            customerCity: data.user?.city || data.customerCity || 'غير معروف',
-            items: Array.isArray(data.items) ? data.items.map((item: any) => ({
-              name: typeof item.name === 'string' ? item.name : '',
-              price: typeof item.price === 'number' ? item.price : 0,
-              quantity: typeof item.quantity === 'number' ? item.quantity : 0,
-              images: Array.isArray(item.images) ? item.images : []
-            })) : [],
-            total: typeof data.total === 'number' ? data.total : 0,
-            status: typeof data.status === 'string' ? data.status : 'pending',
-            paymentConfirmed: typeof data.paymentConfirmed === 'boolean' ? data.paymentConfirmed : false,
-            createdAt: data.createdAt?.toDate() || new Date()
-          };
-          return order;
-        });
-        setOrders(ordersData);
-      } catch (error) {
-        console.error('Error fetching orders:', error);
-        Alert.alert('Error', 'Failed to fetch orders');
-      }
-    };
-
     if (isAdmin && activeTab === 'orders') {
+      const fetchOrders = async () => {
+        try {
+          const ordersQuery = query(
+            collection(db, 'orders'),
+            orderBy('createdAt', 'desc')
+          );
+          const ordersSnapshot = await getDocs(ordersQuery);
+          const ordersData = ordersSnapshot.docs.map(doc => {
+            const data = doc.data();
+            const order: Order = {
+              id: doc.id,
+              customerName: data.user?.name || data.customerName || 'غير معروف',
+              customerPhone: data.user?.phone || data.customerPhone || 'غير معروف',
+              customerAddress: data.user?.address || data.customerAddress || 'غير معروف',
+              customerCity: data.user?.city || data.customerCity || 'غير معروف',
+              items: Array.isArray(data.items) ? data.items.map((item: any) => ({
+                name: typeof item.name === 'string' ? item.name : '',
+                price: typeof item.price === 'number' ? item.price : 0,
+                quantity: typeof item.quantity === 'number' ? item.quantity : 0,
+                images: Array.isArray(item.images) ? item.images : []
+              })) : [],
+              total: typeof data.total === 'number' ? data.total : 0,
+              status: typeof data.status === 'string' ? data.status : 'pending',
+              paymentConfirmed: typeof data.paymentConfirmed === 'boolean' ? data.paymentConfirmed : false,
+              createdAt: data.createdAt?.toDate() || new Date()
+            };
+            return order;
+          });
+          setOrders(ordersData);
+        } catch (error) {
+          console.error('Error fetching orders:', error);
+          Alert.alert('Error', 'Failed to fetch orders');
+        }
+      };
       fetchOrders();
     }
   }, [isAdmin, activeTab]);
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const productsSnapshot = await getDocs(collection(db, 'products'));
-        const productsData = productsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setProducts(productsData);
-      } catch (error) {
-        console.error('Error fetching products:', error);
-        Alert.alert('Error', 'Failed to fetch products');
-      }
-    };
-
     if (isAdmin && activeTab === 'products') {
+      const fetchProducts = async () => {
+        try {
+          const productsSnapshot = await getDocs(collection(db, 'products'));
+          const productsData = productsSnapshot.docs.map(doc => ({
+            id: doc.id,
+            name: doc.data().name || doc.data().title || doc.data().productName || 'Unnamed Product',
+            stock: typeof doc.data().stock === 'number' ? doc.data().stock : 0,
+            images: Array.isArray(doc.data().images) ? doc.data().images : [],
+            title: doc.data().title,
+            productName: doc.data().productName
+          } as Product));
+          setProducts(productsData);
+        } catch (error) {
+          console.error('Error fetching products:', error);
+          Alert.alert('Error', 'Failed to fetch products');
+        }
+      };
       fetchProducts();
     }
   }, [isAdmin, activeTab]);
+
+  useEffect(() => {
+    if (isAdmin && activeTab === 'reports') {
+      fetchReportsData();
+    }
+  }, [isAdmin, activeTab, timeFilter]);
 
   const handleConfirmOrder = async (orderId: string) => {
     try {
@@ -456,7 +662,6 @@ const AdminPanel = () => {
         confirmedAt: new Date()
       });
       
-      // Update local state
       setOrders(orders.map(order => 
         order.id === orderId 
           ? { ...order, status: 'completed' }
@@ -477,16 +682,13 @@ const AdminPanel = () => {
         paymentConfirmed: true
       });
       
-      // Update local state
       setOrders(orders.map(order => 
         order.id === orderId 
           ? { ...order, paymentConfirmed: true }
           : order
       ));
 
-      // Refresh stats to include the new payment
       fetchStats();
-
       Alert.alert('Success', 'Payment has been confirmed successfully');
     } catch (error) {
       console.error('Error confirming payment:', error);
@@ -521,17 +723,12 @@ const AdminPanel = () => {
     }
   };
 
-  if (loading) {
-    return <Text>Loading...</Text>;
-  }
-
-  if (!isAdmin) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>You do not have admin privileges.</Text>
-      </View>
-    );
-  }
+  const formatCurrency = (amount: number): string => {
+    return new Intl.NumberFormat('he-IL', {
+      style: 'currency',
+      currency: 'ILS'
+    }).format(amount);
+  };
 
   const renderProductsSection = () => (
     <View style={styles.section}>
@@ -689,6 +886,81 @@ const AdminPanel = () => {
     </View>
   );
 
+  const renderReportsSection = () => (
+    <View style={styles.reportsContainer}>
+      <View style={styles.filterContainer}>
+        <TouchableOpacity
+          style={[styles.filterButton, timeFilter === 'today' && styles.activeFilter]}
+          onPress={() => setTimeFilter('today')}
+        >
+          <Text style={styles.filterText}>Today</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterButton, timeFilter === 'month' && styles.activeFilter]}
+          onPress={() => setTimeFilter('month')}
+        >
+          <Text style={styles.filterText}>This Month</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterButton, timeFilter === 'year' && styles.activeFilter]}
+          onPress={() => setTimeFilter('year')}
+        >
+          <Text style={styles.filterText}>This Year</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.reportsStatsContainer}>
+        <View style={styles.reportsStatCard}>
+          <Text style={styles.reportsStatTitle}>Revenue</Text>
+          <Text style={styles.reportsStatValue}>{formatCurrency(revenue)}</Text>
+        </View>
+
+        <View style={styles.reportsStatCard}>
+          <Text style={styles.reportsStatTitle}>Products Sold</Text>
+          <Text style={styles.reportsStatValue}>{soldProducts}</Text>
+        </View>
+      </View>
+
+      <View style={styles.lowStockContainer}>
+        <Text style={styles.reportsSectionTitle}>Low Stock Products</Text>
+        {lowStockProducts.length === 0 ? (
+          <Text style={styles.noProductsText}>No low stock products found</Text>
+        ) : (
+          lowStockProducts.map((product, index) => {
+            const imageUrl = product.images && product.images.length > 0 
+              ? product.images[0] 
+              : 'https://via.placeholder.com/48x48?text=No+Image';
+            const productName = product.name || product.title || product.productName || 'Unnamed Product';
+            return (
+              <View key={index} style={styles.lowStockItem}>
+                <Image source={{ uri: imageUrl }} style={styles.lowStockImage} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.reportsProductName}>{productName}</Text>
+                  {product.stock <= 3 && (
+                    <Text style={styles.lowStockWarning}>Reorder Needed!</Text>
+                  )}
+                  <Text style={styles.lowStockStock}>Stock: {product.stock}</Text>
+                </View>
+              </View>
+            );
+          })
+        )}
+      </View>
+    </View>
+  );
+
+  if (loading) {
+    return <Text>Loading...</Text>;
+  }
+
+  if (!isAdmin) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>You do not have admin privileges.</Text>
+      </View>
+    );
+  }
+
   return (
     <>
       <Stack.Screen
@@ -711,22 +983,7 @@ const AdminPanel = () => {
             color: Colors.primary,
           },
           headerShadowVisible: false,
-          headerRight: () => (
-            <View style={{ flexDirection: 'row' }}>
-              <TouchableOpacity
-                style={styles.headerButton}
-                onPress={() => router.push('/Reports' as any)}
-              >
-                <Ionicons name="bar-chart" size={24} color={Colors.primary} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.headerButton}
-                onPress={() => router.push('/AddProduct' as any)}
-              >
-                <Ionicons name="add-circle" size={24} color={Colors.primary} />
-              </TouchableOpacity>
-            </View>
-          ),
+          headerRight: () => null,
         }}
       />
       <View style={styles.container}>
@@ -752,12 +1009,20 @@ const AdminPanel = () => {
             <Ionicons name="stats-chart-outline" size={24} color={activeTab === 'stats' ? '#fff' : Colors.primary} />
             <Text style={[styles.tabText, activeTab === 'stats' && styles.activeTabText]}>Statistics</Text>
           </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tab, activeTab === 'reports' && styles.activeTab]}
+            onPress={() => setActiveTab('reports')}
+          >
+            <Ionicons name="bar-chart" size={24} color={activeTab === 'reports' ? '#fff' : Colors.primary} />
+            <Text style={[styles.tabText, activeTab === 'reports' && styles.activeTabText]}>Reports</Text>
+          </TouchableOpacity>
         </View>
 
         <ScrollView style={styles.content}>
           {activeTab === 'products' && renderProductsSection()}
           {activeTab === 'orders' && renderOrdersSection()}
           {activeTab === 'stats' && renderStatsSection()}
+          {activeTab === 'reports' && renderReportsSection()}
         </ScrollView>
       </View>
     </>
