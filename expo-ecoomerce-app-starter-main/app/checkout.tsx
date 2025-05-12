@@ -4,7 +4,7 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { Colors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
-import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { getAuth } from 'firebase/auth';
 
@@ -19,7 +19,7 @@ interface OrderItem {
 
 // Interface for order
 interface Order {
-  id?: string; // Optional id, added after Firestore save
+  id?: string;
   userId: string;
   items: OrderItem[];
   total: number;
@@ -41,8 +41,150 @@ interface Order {
     cvv?: string;
   };
   status: string;
-  createdAt: Date;
+  createdAt: Timestamp;
 }
+
+// Utility function to send notification
+const sendNotification = async (toToken: string, title: string, body: string, userId: string, orderId?: string) => {
+  try {
+    await addDoc(collection(db, 'notifications'), {
+      userId,
+      title,
+      body,
+      orderId: orderId || null,
+      createdAt: Timestamp.fromDate(new Date()),
+      status: 'pending',
+    });
+    console.log('Notification saved to Firestore:', { userId, title, body, orderId });
+
+    const response = await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        to: toToken,
+        sound: 'default',
+        title,
+        body,
+        priority: 'high',
+        data: { orderId: orderId || '' },
+      }),
+    });
+
+    const result = await response.json();
+    console.log('Push notification response:', result);
+
+    if (result.errors) {
+      console.error('Push notification errors:', result.errors);
+    }
+  } catch (error) {
+    console.error('Error sending notification:', error);
+  }
+};
+
+// Notify admins on order
+const notifyAdminsOnOrder = async (userName: string, orderDetails: string, orderId: string) => {
+  try {
+    const adminQuery = query(collection(db, 'users'), where('role', '==', 'admin'));
+    const adminDocs = await getDocs(adminQuery);
+    const adminTokens = adminDocs.docs
+      .map((doc) => {
+        const data = doc.data();
+        return { token: data.expoPushToken, userId: data.uid };
+      })
+      .filter((entry): entry is { token: string; userId: string } => !!entry.token && typeof entry.token === 'string');
+
+    console.log('Admin Tokens:', adminTokens);
+
+    if (adminTokens.length === 0) {
+      console.log('No admin tokens found');
+      return;
+    }
+
+    adminTokens.forEach(({ token, userId }) => {
+      sendNotification(token, 'طلبية جديدة', `طلبية من ${userName}: ${orderDetails}`, userId, orderId);
+    });
+  } catch (error) {
+    console.error('Error notifying admins:', error);
+  }
+};
+
+// Function to send user thank-you notification
+const sendUserOrderConfirmation = async (order: Order) => {
+  try {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    console.log('Authenticated user:', user?.uid || 'None');
+    console.log('Attempting to send order confirmation for user:', order.userId);
+
+    // Fetch user document directly by ID
+    const userDocRef = doc(db, 'users', order.userId);
+    const userDoc = await getDoc(userDocRef);
+
+    if (!userDoc.exists()) {
+      console.log('No user document found for userId:', order.userId);
+      return;
+    }
+
+    const userToken = userDoc.data()?.expoPushToken;
+
+    const itemsSummary = order.items
+      .map((item: OrderItem) => {
+        if (!item.name || !item.quantity) {
+          console.warn('Invalid item data:', item);
+          return 'Unknown Item';
+        }
+        return `${item.name} (الكمية: ${item.quantity})`;
+      })
+      .join(', ');
+
+    await addDoc(collection(db, 'notifications'), {
+      userId: order.userId,
+      title: 'شكراً لتسوقك من M&H Store!',
+      body: `شكراً لشرائك! طلبيتك: ${itemsSummary}. المجموع: ₪${order.total}`,
+      orderId: order.id,
+      createdAt: Timestamp.fromDate(new Date()),
+      status: 'pending',
+    });
+
+    if (!userToken) {
+      console.log('No expoPushToken found');
+      return;
+    }
+
+    const message = {
+      to: userToken,
+      sound: 'default',
+      title: 'شكراً لتسوقك من M&H Store!',
+      body: `شكراً لشرائك! طلبيتك: ${itemsSummary}. المجموع: ₪${order.total}`,
+      data: { orderId: order.id || '' },
+    };
+
+    const response = await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(message),
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+      console.log('User order confirmation sent successfully:', result);
+    } else {
+      console.error('Failed to send notification:', result);
+      if (result.errors) {
+        console.error('Expo error details:', result.errors);
+      }
+    }
+  } catch (error) {
+    console.error('Error in sendUserOrderConfirmation:', error);
+  }
+};
 
 const CheckoutScreen: React.FC = () => {
   const headerHeight = useHeaderHeight();
@@ -91,48 +233,6 @@ const CheckoutScreen: React.FC = () => {
     }));
   };
 
-  // Function to send user thank-you notification
-  const sendUserOrderConfirmation = async (order: Order) => {
-    try {
-      const userDoc = await getDocs(query(
-        collection(db, 'users'),
-        where('uid', '==', order.userId)
-      ));
-      const userToken = userDoc.docs[0]?.data().expoPushToken;
-
-      if (!userToken) {
-        console.log('No push token for user:', order.userId);
-        return;
-      }
-
-      const itemsSummary = order.items
-        .map((item: OrderItem) => `${item.name} (الكمية: ${item.quantity})`)
-        .join(', ');
-
-      const message = {
-        to: userToken,
-        sound: 'default',
-        title: 'شكراً لتسوقك من M&H Store!',
-        body: `شكراً لشرائك! طلبيتك: ${itemsSummary}`,
-        data: { orderId: order.id || '' },
-      };
-
-      const response = await fetch('https://exp.host/--/api/v2/push/send', {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(message),
-      });
-
-      const result = await response.json();
-      console.log('User order confirmation sent:', result);
-    } catch (error) {
-      console.error('Error sending user order confirmation:', error);
-    }
-  };
-
   const handlePlaceOrder = async () => {
     try {
       if (!formData.fullName || !formData.phone || !formData.address || !formData.city) {
@@ -154,13 +254,15 @@ const CheckoutScreen: React.FC = () => {
         return;
       }
 
+      console.log('User ID:', user.uid, 'Order User ID:', user.uid);
+
       const shippingFee = shippingOption === 'westbank' ? 20 : 60;
       const finalTotal = total + shippingFee;
 
       // Create a detailed item list with all necessary fields including images
       const orderItems = cartItems.map(item => ({
         productId: item.productId || item.id,
-        name: item.name || item.title || '',
+        name: item.name || item.title || 'Unknown',
         images: item.images ? item.images : [item.image],
         price: item.price,
         quantity: item.quantity,
@@ -190,15 +292,24 @@ const CheckoutScreen: React.FC = () => {
           } : {}),
         },
         status: 'pending',
-        createdAt: new Date(),
+        createdAt: Timestamp.fromDate(new Date()),
       };
 
       const ordersRef = collection(db, 'orders');
       const orderRef = await addDoc(ordersRef, orderData);
-      orderData.id = orderRef.id; // Add order ID to orderData
+      orderData.id = orderRef.id;
+
+      // Create detailed order details for admin notification
+      const orderDetails = `رقم الطلب: ${orderData.id}, العناصر: ${orderItems
+        .map(item => `${item.name} (الكمية: ${item.quantity}, السعر: ₪${item.price})`)
+        .join(', ')}, المجموع: ₪${finalTotal}, العميل: ${formData.fullName}, الهاتف: ${formData.phone}, العنوان: ${formData.address}, ${formData.city}`;
 
       // Send user confirmation notification
       await sendUserOrderConfirmation(orderData);
+
+      // Notify admins
+      await notifyAdminsOnOrder(formData.fullName, orderDetails, orderData.id);
+      console.log('Admins notified:', { customerName: formData.fullName, orderDetails });
 
       Alert.alert(
         'Success',
@@ -479,7 +590,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   shippingOptions: {
-    marginBottom: 16,
+    paddingBottom: 16,
   },
   paymentOptions: {
     marginBottom: 16,

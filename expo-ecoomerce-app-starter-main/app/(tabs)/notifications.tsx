@@ -1,12 +1,20 @@
-import { StyleSheet, Text, View, FlatList } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Platform, Alert } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import * as Notifications from 'expo-notifications';
-import Constants from 'expo-constants';
-import { db } from '@/config/firebase';
-import { doc, setDoc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
+import { doc, setDoc, collection, where, query, orderBy, addDoc, onSnapshot, Timestamp, getDocs, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
+import { db } from '@/config/firebase';
+import Constants from 'expo-constants';
 
-// Configure notification handler
+// Define a type for in-app notifications
+type InAppNotification = {
+  id: string;
+  title: string;
+  body: string;
+  timestamp: string;
+};
+
+// Notification handler for system notifications
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -15,381 +23,356 @@ Notifications.setNotificationHandler({
   }),
 });
 
-// Interface for order item (aligned with CheckoutScreen)
-interface OrderItem {
-  productId: string;
-  name: string;
-  images: string[];
-  price: number;
-  quantity: number;
-}
-
-// Interface for order (aligned with CheckoutScreen)
-interface Order {
-  id: string;
-  userId: string;
-  items: OrderItem[];
-  total: number;
-  customerName: string;
-  customerPhone: string;
-  customerAddress: string;
-  customerCity: string;
-  shippingInfo: {
-    fullName: string;
-    phone: string;
-    address: string;
-    city: string;
-    region: string;
-  };
-  paymentInfo: {
-    method: string;
-    cardNumber?: string;
-    expiryDate?: string;
-    cvv?: string;
-  };
-  status: string;
-  createdAt: Date;
-}
-
-const NotificationsScreen = () => {
-  const [notifications, setNotifications] = useState<any[]>([]);
+const PushNotifications = () => {
+  const [token, setToken] = useState<string>('');
+  const [inAppNotifications, setInAppNotifications] = useState<InAppNotification[]>([]);
   const auth = getAuth();
-  const currentUser = auth.currentUser;
+  const user = auth.currentUser;
+  const projectId = Constants.expoConfig?.extra?.eas?.projectId;
 
+  // Real-time listener for notifications
   useEffect(() => {
-    if (!currentUser) {
-      console.log('No authenticated user found.');
+    if (!user) {
+      console.log('No user logged in');
+      setInAppNotifications([]);
       return;
     }
 
-    // Register for push notifications
-    registerForPushNotificationsAsync(currentUser.uid)
-      .catch(error => console.error('Error registering for notifications:', error));
+    console.log('Setting up onSnapshot for user:', user.uid);
 
-    // Listen for incoming notifications
-    const subscription = Notifications.addNotificationReceivedListener(notification => {
-      setNotifications(prev => [{ ...notification, id: Date.now().toString() }, ...prev]);
+    const notificationsQuery = query(
+      collection(db, 'notifications'),
+      where('userId', '==', user.uid),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(notificationsQuery, (querySnapshot) => {
+      try {
+        const notifications = querySnapshot.docs.map((doc) => {
+          const data = doc.data();
+          console.log('Notification data:', {
+            id: doc.id,
+            userId: data.userId,
+            title: data.title,
+            body: data.body,
+            orderId: data.orderId,
+            createdAt: data.createdAt?.toDate?.()?.toISOString(),
+          });
+          return {
+            id: doc.id,
+            title: data.title || 'No Title',
+            body: data.body || 'No Body',
+            timestamp: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+          };
+        });
+        setInAppNotifications(notifications.slice(0, 5)); // Keep last 5 notifications
+        console.log('In-app notifications updated:', notifications);
+      } catch (error) {
+        console.error('Error processing onSnapshot data:', error);
+      }
+    }, (error) => {
+      console.error('onSnapshot error:', error);
+      Alert.alert('Error', 'Failed to fetch notifications: ' + error.message);
     });
 
-    // Check user role and set up listeners
-    const userDocRef = doc(db, 'users', currentUser.uid);
-    const unsubscribeUser = onSnapshot(userDocRef, (doc) => {
-      const userData = doc.data();
-      if (!userData) return;
+    return () => unsubscribe();
+  }, [user]);
 
-      // Admin: Listen for new orders
-      if (userData.role === 'admin') {
-        const ordersQuery = collection(db, 'orders');
-        onSnapshot(ordersQuery, (snapshot) => {
-          snapshot.docChanges().forEach((change) => {
-            if (change.type === 'added') {
-              const order = { id: change.doc.id, ...change.doc.data() } as Order;
-              sendAdminOrderNotification(order)
-                .catch(error => console.error('Error sending admin notification:', error));
-            }
-          });
-        }, error => console.error('Error listening to orders:', error));
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF231F7C',
+      });
+    }
+
+    if (user) {
+      registerPushToken(user.uid);
+    } else {
+      console.log('No user logged in');
+    }
+
+    // Listener for foreground notifications
+    const foregroundSubscription = Notifications.addNotificationReceivedListener((notification) => {
+      const { title, body, data } = notification.request.content;
+      if (title && body && user) {
+        console.log('Foreground notification received:', { title, body, orderId: data?.orderId });
+        addDoc(collection(db, 'notifications'), {
+          userId: user.uid,
+          title,
+          body,
+          orderId: data?.orderId || null,
+          createdAt: Timestamp.fromDate(new Date()),
+          status: 'delivered',
+        }).catch((error) => console.error('Error saving foreground notification:', error));
       }
+    });
 
-      // User: Listen for order status updates
-      if (userData.role === 'user') {
-        const userOrdersQuery = query(
-          collection(db, 'orders'),
-          where('userId', '==', currentUser.uid)
-        );
-        onSnapshot(userOrdersQuery, (snapshot) => {
-          snapshot.docChanges().forEach((change) => {
-            const order = { id: change.doc.id, ...change.doc.data() } as Order;
-            
-            if (change.type === 'added') {
-              // Send thank you notification when order is placed
-              sendUserThankYouNotification(order)
-                .catch(error => console.error('Error sending thank you notification:', error));
-            } else if (change.type === 'modified' && order.status === 'confirmed') {
-              // Send confirmation notification when order is confirmed
-              sendUserOrderConfirmationNotification(order)
-                .catch(error => console.error('Error sending confirmation notification:', error));
-            }
-          });
-        }, error => console.error('Error listening to user orders:', error));
-
-        // Schedule promotional notifications for users
-        const intervalId = setInterval(() => {
-          sendPromotionalNotification(currentUser.uid)
-            .catch(error => console.error('Error sending promotional notification:', error));
-        }, 9 * 60 * 60 * 1000); // Every 9 hours
-
-        return () => clearInterval(intervalId);
+    // Listener for background/quit state notifications
+    const backgroundSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      const { title, body, data } = response.notification.request.content;
+      if (title && body && user) {
+        console.log('Background notification received:', { title, body, orderId: data?.orderId });
+        addDoc(collection(db, 'notifications'), {
+          userId: user.uid,
+          title,
+          body,
+          orderId: data?.orderId || null,
+          createdAt: Timestamp.fromDate(new Date()),
+          status: 'delivered',
+        }).catch((error) => console.error('Error saving background notification:', error));
       }
-    }, error => console.error('Error fetching user data:', error));
+    });
 
     return () => {
-      subscription.remove();
-      unsubscribeUser();
+      foregroundSubscription.remove();
+      backgroundSubscription.remove();
     };
-  }, [currentUser]);
+  }, [user]);
 
-  // Function to send admin notification for new orders
-  const sendAdminOrderNotification = async (order: Order) => {
-    try {
-      const adminQuery = query(collection(db, 'users'), where('role', '==', 'admin'));
-      const adminDocs = await getDocs(adminQuery);
-      const adminTokens = adminDocs.docs
-        .map(doc => doc.data().expoPushToken)
-        .filter(token => token);
-
-      if (adminTokens.length === 0) {
-        console.log('No admin tokens found.');
-        return;
-      }
-
-      const itemsSummary = order.items
-        .map(item => `${item.name} (الكمية: ${item.quantity})`)
-        .join(', ');
-
-      const message = {
-        to: adminTokens,
-        sound: 'default',
-        title: 'طلبية جديدة',
-        body: `طلبية من ${order.customerName} في ${order.customerAddress}, ${order.customerCity}. المنتجات: ${itemsSummary}`,
-        data: { orderId: order.id },
-      };
-
-      const response = await fetch('https://exp.host/--/api/v2/push/send', {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(message),
-      });
-
-      const result = await response.json();
-      console.log('Admin notification sent:', result);
-    } catch (error) {
-      console.error('Error sending admin notification:', error);
-    }
-  };
-
-  // Function to send thank you notification to user after placing order
-  const sendUserThankYouNotification = async (order: Order) => {
-    try {
-      const userDoc = await getDocs(query(
-        collection(db, 'users'),
-        where('uid', '==', order.userId)
-      ));
-      const userToken = userDoc.docs[0]?.data().expoPushToken;
-
-      if (!userToken) {
-        console.log('No push token for user:', order.userId);
-        return;
-      }
-
-      const message = {
-        to: userToken,
-        sound: 'default',
-        title: 'شكراً لشرائك من M&H Store',
-        body: 'نشكرك على ثقتك بنا. سنقوم بمعالجة طلبيتك في أقرب وقت ممكن.',
-        data: { orderId: order.id },
-      };
-
-      const response = await fetch('https://exp.host/--/api/v2/push/send', {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(message),
-      });
-
-      const result = await response.json();
-      console.log('User thank you notification sent:', result);
-    } catch (error) {
-      console.error('Error sending user thank you notification:', error);
-    }
-  };
-
-  // Function to send order confirmation notification to user
-  const sendUserOrderConfirmationNotification = async (order: Order) => {
-    try {
-      const userDoc = await getDocs(query(
-        collection(db, 'users'),
-        where('uid', '==', order.userId)
-      ));
-      const userToken = userDoc.docs[0]?.data().expoPushToken;
-
-      if (!userToken) {
-        console.log('No push token for user:', order.userId);
-        return;
-      }
-
-      const message = {
-        to: userToken,
-        sound: 'default',
-        title: 'تم تأكيد طلبيتك',
-        body: 'تم تأكيد طلبيتك وستصل خلال 2-3 أيام عمل.',
-        data: { orderId: order.id },
-      };
-
-      const response = await fetch('https://exp.host/--/api/v2/push/send', {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(message),
-      });
-
-      const result = await response.json();
-      console.log('User order confirmation notification sent:', result);
-    } catch (error) {
-      console.error('Error sending user order confirmation notification:', error);
-    }
-  };
-
-  // Function to send promotional notification
-  const sendPromotionalNotification = async (userId: string) => {
-    try {
-      const userDoc = await getDocs(query(
-        collection(db, 'users'),
-        where('uid', '==', userId)
-      ));
-      const userToken = userDoc.docs[0]?.data().expoPushToken;
-
-      if (!userToken) {
-        console.log('No push token for user:', userId);
-        return;
-      }
-
-      const message = {
-        to: userToken,
-        sound: 'default',
-        title: 'اكتشف منتجاتنا الجديدة!',
-        body: 'تفقد أحدث المنتجات في M&H Store.',
-        data: { screen: 'Products' },
-      };
-
-      const response = await fetch('https://exp.host/--/api/v2/push/send', {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(message),
-      });
-
-      const result = await response.json();
-      console.log('Promotional notification sent:', result);
-    } catch (error) {
-      console.error('Error sending promotional notification:', error);
-    }
-  };
-
-  // Register for push notifications
-  async function registerForPushNotificationsAsync(userId: string) {
-    if (!Constants.isDevice) {
-      console.log('Push notifications require a physical device. Skipping registration.');
-      await setDoc(doc(db, 'users', userId), {
-        uid: userId,
-        role: 'user', // Default to user
-      }, { merge: true });
-      return;
-    }
-  
+  const registerPushToken = async (userId: string) => {
     try {
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
-  
+
       if (existingStatus !== 'granted') {
         const { status } = await Notifications.requestPermissionsAsync();
         finalStatus = status;
       }
-  
+
       if (finalStatus !== 'granted') {
-        console.log('Notification permissions denied.');
-        await setDoc(doc(db, 'users', userId), {
-          uid: userId,
-          role: 'user', // Default to user
-        }, { merge: true });
+        Alert.alert('Failed to get push token: Permissions not granted');
         return;
       }
-  
-      // Get push token
-      const token = (await Notifications.getExpoPushTokenAsync({
-        projectId: Constants.expoConfig?.extra?.eas?.projectId,
-      })).data;
-  
-      // Store token and role in Firestore
-      await setDoc(doc(db, 'users', userId), {
-        uid: userId,
-        expoPushToken: token,
-        role: userId.includes('admin') ? 'admin' : 'user', // Adjust role logic
-      }, { merge: true });
-  
-      console.log('Expo Push Token:', token);
+
+      const pushToken = (
+        await Notifications.getExpoPushTokenAsync({
+          projectId: projectId || undefined,
+        })
+      ).data;
+
+      setToken(pushToken);
+      console.log('Expo Push Token:', pushToken);
+
+      await setDoc(
+        doc(db, 'users', userId),
+        {
+          uid: userId,
+          expoPushToken: pushToken,
+          lastUpdated: new Date().toISOString(),
+        },
+        { merge: true }
+      );
     } catch (error) {
-      console.error('Error registering for push notifications:', error);
-      // Store user data without token on error
-      await setDoc(doc(db, 'users', userId), {
-        uid: userId,
-        role: 'user', // Default to user
-      }, { merge: true });
+      console.error('Error registering push token:', error);
+      Alert.alert('Error registering push token');
     }
-  }
+  };
+
+  const sendNotification = async (toToken: string, title: string, body: string, userId: string, orderId?: string) => {
+    try {
+      // Save to Firestore for in-app display
+      await addDoc(collection(db, 'notifications'), {
+        userId,
+        title,
+        body,
+        orderId: orderId || null,
+        createdAt: Timestamp.fromDate(new Date()),
+        status: 'pending',
+      });
+      console.log('Notification saved to Firestore:', { userId, title, body, orderId });
+
+      const response = await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: toToken,
+          sound: 'default',
+          title,
+          body,
+          priority: 'high',
+          data: { orderId: orderId || '' },
+        }),
+      });
+
+      const result = await response.json();
+      console.log('Push notification response:', result);
+
+      if (result.errors) {
+        console.error('Push notification errors:', result.errors);
+        Alert.alert('Failed to send push notification');
+      }
+    } catch (error) {
+      console.error('Error sending notification:', error);
+      Alert.alert('Error sending notification');
+    }
+  };
+
+  // Notify admins on order
+  const notifyAdminsOnOrder = async (userName: string, orderDetails: string, orderId: string) => {
+    try {
+      const adminQuery = query(collection(db, 'users'), where('role', '==', 'admin'));
+      const adminDocs = await getDocs(adminQuery);
+      const adminTokens = adminDocs.docs
+        .map((doc: QueryDocumentSnapshot<DocumentData>) => {
+          const data = doc.data();
+          return { token: data.expoPushToken, userId: data.uid };
+        })
+        .filter((entry): entry is { token: string; userId: string } => !!entry.token && typeof entry.token === 'string');
+
+      console.log('Admin Tokens:', adminTokens);
+
+      if (adminTokens.length === 0) {
+        console.log('No admin tokens found');
+        return;
+      }
+
+      adminTokens.forEach(({ token, userId }) => {
+        sendNotification(token, 'طلبية جديدة', `طلبية من ${userName}: ${orderDetails}`, userId, orderId);
+      });
+    } catch (error) {
+      console.error('Error notifying admins:', error);
+    }
+  };
+
+  // Send thank you notification
+  const sendThankYouNotification = async (userId: string, orderId: string) => {
+    try {
+      const userDoc = await getDocs(query(collection(db, 'users'), where('uid', '==', userId)));
+      if (userDoc.empty) {
+        console.log('User not found');
+        return;
+      }
+
+      const userData = userDoc.docs[0].data();
+      const userToken = userData.expoPushToken;
+
+      if (userToken) {
+        sendNotification(
+          userToken,
+          'شكراً لشرائك من M&H Store',
+          'نشكرك على ثقتك بنا. سنقوم بمعالجة طلبيتك في أقرب وقت ممكن.',
+          userId,
+          orderId
+        );
+      }
+    } catch (error) {
+      console.error('Error sending thank you notification:', error);
+    }
+  };
+
+  // Send order confirmation notification
+  const sendOrderConfirmationNotification = async (userId: string, orderId: string) => {
+    try {
+      const userDoc = await getDocs(query(collection(db, 'users'), where('uid', '==', userId)));
+      if (userDoc.empty) {
+        console.log('User not found');
+        return;
+      }
+
+      const userData = userDoc.docs[0].data();
+      const userToken = userData.expoPushToken;
+
+      if (userToken) {
+        sendNotification(
+          userToken,
+          'تم تأكيد طلبيتك',
+          'تم تأكيد طلبيتك وستصل خلال 2-3 أيام عمل.',
+          userId,
+          orderId
+        );
+      }
+    } catch (error) {
+      console.error('Error sending order confirmation notification:', error);
+    }
+  };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>الإشعارات</Text>
-      {notifications.length === 0 ? (
-        <Text style={styles.noNotifications}>لا توجد إشعارات حالياً</Text>
-      ) : (
-        <FlatList
-          data={notifications}
-          keyExtractor={item => item.id}
-          renderItem={({ item }) => (
-            <View style={styles.notificationItem}>
-              <Text style={styles.text}>{item.request.content.title}</Text>
-              <Text style={styles.text}>{item.request.content.body}</Text>
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.title}>🔔 إشعارات M&H</Text>
+      <Text style={styles.token}>{token || 'جارٍ توليد التوكن...'}</Text>
+      <View style={styles.notificationsContainer}>
+        <Text style={styles.notificationsTitle}>الإشعارات داخل التطبيق</Text>
+        {inAppNotifications.length === 0 ? (
+          <Text style={styles.noNotifications}>لا توجد إشعارات حالياً</Text>
+        ) : (
+          inAppNotifications.map((notification) => (
+            <View key={notification.id} style={styles.notificationCard}>
+              <Text style={styles.notificationTitle}>{notification.title}</Text>
+              <Text style={styles.notificationBody}>{notification.body}</Text>
+              <Text style={styles.notificationTimestamp}>
+                {new Date(notification.timestamp).toLocaleString('ar-EG')}
+              </Text>
             </View>
-          )}
-        />
-      )}
-    </View>
+          ))
+        )}
+      </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     padding: 20,
+    gap: 15,
+    justifyContent: 'center',
+    alignItems: 'stretch',
     backgroundColor: '#fff',
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 20,
     textAlign: 'center',
     marginBottom: 20,
-    color: '#333',
+    fontWeight: 'bold',
   },
-  noNotifications: {
-    fontSize: 16,
+  token: {
+    fontSize: 10,
+    color: 'gray',
+    marginBottom: 10,
     textAlign: 'center',
-    color: '#666',
+  },
+  notificationsContainer: {
     marginTop: 20,
   },
-  notificationItem: {
-    backgroundColor: '#f8f8f8',
+  notificationsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  noNotifications: {
+    fontSize: 14,
+    color: 'gray',
+    textAlign: 'center',
+  },
+  notificationCard: {
+    backgroundColor: '#f9f9f9',
     padding: 15,
-    borderRadius: 8,
+    borderRadius: 10,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: '#ddd',
   },
-  text: {
+  notificationTitle: {
     fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  notificationBody: {
+    fontSize: 14,
     color: '#333',
     marginBottom: 5,
   },
+  notificationTimestamp: {
+    fontSize: 12,
+    color: 'gray',
+    textAlign: 'right',
+  },
 });
 
-export default NotificationsScreen;
+export default PushNotifications;

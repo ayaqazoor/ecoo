@@ -1,13 +1,85 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, Button, Alert, StyleSheet, ScrollView, TouchableOpacity, Image } from "react-native";
+import { View, Text, Alert, StyleSheet, ScrollView, TouchableOpacity, Image } from "react-native";
 import { checkIfAdmin, addProduct, deleteProduct } from "@/app/utils/adminFunctions";
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { router } from 'expo-router';
 import { Stack } from 'expo-router';
-import { collection, getDocs, query, where, getFirestore, orderBy, updateDoc, doc, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, query, where, getFirestore, orderBy, updateDoc, doc, Timestamp, getDoc, addDoc } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
+// Utility function to send notification
+const sendNotification = async (toToken: string, title: string, body: string, userId: string, orderId?: string) => {
+  const db = getFirestore();
+  try {
+    await addDoc(collection(db, 'notifications'), {
+      userId,
+      title,
+      body,
+      orderId: orderId || null,
+      createdAt: Timestamp.fromDate(new Date()),
+      status: 'pending',
+    });
+    console.log('Notification saved to Firestore:', { userId, title, body, orderId });
+
+    const response = await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        to: toToken,
+        sound: 'default',
+        title,
+        body,
+        priority: 'high',
+        data: { orderId: orderId || '' },
+      }),
+    });
+
+    const result = await response.json();
+    console.log('Push notification response:', result);
+    if (result.errors) {
+      console.error('Push notification errors:', result.errors);
+    }
+  } catch (error) {
+    console.error('Error sending notification:', error);
+  }
+};
+
+// Send order confirmation notification
+const sendOrderConfirmationNotification = async (userId: string, orderId: string) => {
+  const db = getFirestore();
+  try {
+    const userDocRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userDocRef);
+    if (!userDoc.exists()) {
+      console.log('User not found');
+      return;
+    }
+
+    const userData = userDoc.data();
+    const userToken = userData.expoPushToken;
+
+    if (userToken) {
+      await sendNotification(
+        userToken,
+        'تم تأكيد طلبيتك',
+        'تم تأكيد طلبيتك وستصل خلال 2-3 أيام عمل.',
+        userId,
+        orderId
+      );
+      console.log('Order confirmation notification sent to user:', userId);
+    } else {
+      console.log('No expoPushToken found for user:', userId);
+    }
+  } catch (error) {
+    console.error('Error sending order confirmation notification:', error);
+  }
+};
+
+// Styles and interfaces remain unchanged
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -287,7 +359,6 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 8,
   },
-  // Reports styles
   reportsContainer: {
     flex: 1,
     backgroundColor: Colors.background,
@@ -421,6 +492,7 @@ interface Order {
   status: string;
   paymentConfirmed: boolean;
   createdAt: Date;
+  userId?: string; // Added for notification
 }
 
 interface Product {
@@ -457,8 +529,6 @@ const AdminPanel = () => {
   });
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-
-  // Reports state
   const [timeFilter, setTimeFilter] = useState<'today' | 'month' | 'year'>('today');
   const [revenue, setRevenue] = useState<number>(0);
   const [soldProducts, setSoldProducts] = useState<number>(0);
@@ -598,10 +668,11 @@ const AdminPanel = () => {
             const data = doc.data();
             const order: Order = {
               id: doc.id,
-              customerName: data.user?.name || data.customerName || 'غير معروف',
-              customerPhone: data.user?.phone || data.customerPhone || 'غير معروف',
-              customerAddress: data.user?.address || data.customerAddress || 'غير معروف',
-              customerCity: data.user?.city || data.customerCity || 'غير معروف',
+              customerName: data.customerName || 'غير معروف',
+              customerPhone: data.customerPhone || 'غير معروف',
+              customerAddress: data.customerAddress || 'غير معروف',
+              customerCity: data.customerCity || 'غير معروف',
+              userId: data.userId, // Ensure userId is captured
               items: Array.isArray(data.items) ? data.items.map((item: any) => ({
                 name: typeof item.name === 'string' ? item.name : '',
                 price: typeof item.price === 'number' ? item.price : 0,
@@ -611,7 +682,9 @@ const AdminPanel = () => {
               total: typeof data.total === 'number' ? data.total : 0,
               status: typeof data.status === 'string' ? data.status : 'pending',
               paymentConfirmed: typeof data.paymentConfirmed === 'boolean' ? data.paymentConfirmed : false,
-              createdAt: data.createdAt?.toDate() || new Date()
+              createdAt: data.createdAt && typeof data.createdAt.toDate === 'function'
+                ? data.createdAt.toDate()
+                : new Date(data.createdAt || Date.now())
             };
             return order;
           });
@@ -659,9 +732,18 @@ const AdminPanel = () => {
       const orderRef = doc(db, 'orders', orderId);
       await updateDoc(orderRef, {
         status: 'completed',
-        confirmedAt: new Date()
+        confirmedAt: Timestamp.fromDate(new Date())
       });
       
+      // Find the order to get userId
+      const order = orders.find(o => o.id === orderId);
+      if (order && order.userId) {
+        await sendOrderConfirmationNotification(order.userId, orderId);
+        console.log('User notified of order confirmation:', order.userId);
+      } else {
+        console.warn('Order or userId not found for notification:', orderId);
+      }
+
       setOrders(orders.map(order => 
         order.id === orderId 
           ? { ...order, status: 'completed' }

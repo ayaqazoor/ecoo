@@ -34,10 +34,26 @@
       "expo-build-properties",
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#ffffff"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "7e594b6e-ca2d-4c55-875c-4b804b9d89e0"
+      },
+      "router": {
+        "origin": false
+      }
+    },
+    "owner": "ayaqazoor"
   }
 }

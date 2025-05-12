@@ -19,7 +19,7 @@ interface Order {
   id: string;
   status: string;
   userName: string;
-  createdAt: any;
+  createdAt: Date;
   total: number;
   items: OrderItem[];
 }
@@ -79,7 +79,7 @@ const OrdersManagement = () => {
             id: docSnap.id,
             status: data.status || 'Pending',
             userName: data.userName || data.customerName || '',
-            createdAt: data.createdAt,
+            createdAt: data.createdAt?.toDate() || new Date(),
             total: data.total || 0,
             items: itemsWithNames,
           };
@@ -118,7 +118,7 @@ const OrdersManagement = () => {
 
       <View style={styles.orderDetails}>
         <Text style={styles.detailText}>Customer: {item.userName}</Text>
-        <Text style={styles.detailText}>Date: {new Date(item.createdAt?.toDate()).toLocaleDateString()}</Text>
+        <Text style={styles.detailText}>Date: {new Date(item.createdAt).toLocaleDateString()}</Text>
         <Text style={styles.detailText}>Total: ₪{item.total}</Text>
       </View>
 
