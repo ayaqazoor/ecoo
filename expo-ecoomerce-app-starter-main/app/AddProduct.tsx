@@ -1,13 +1,22 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
-import { db } from '@/config/firebase';
+import { db, auth } from '@/config/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { router, Stack } from 'expo-router';
 import { useHeaderHeight } from '@react-navigation/elements';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import * as ImagePicker from 'expo-image-picker';
 
 const AddProduct = () => {
   const [name, setName] = useState('');
@@ -22,20 +31,25 @@ const AddProduct = () => {
 
   const getCategoryId = (categoryName: string): number => {
     const categoryMap: { [key: string]: number } = {
-      'makeup': 5,
+      makeup: 5,
       'hand bags': 4,
       'skin care': 2,
-      'accessories': 3,
-      'perfumes': 7,
+      accessories: 3,
+      perfumes: 7,
       'body care': 1,
       'hair care': 6,
-      'watches': 8,
-      'gift': 9
+      watches: 8,
+      gift: 9,
     };
     return categoryMap[categoryName.toLowerCase()] || 0;
   };
 
   const handleAddProduct = async () => {
+    if (!auth.currentUser) {
+      Alert.alert('Error', 'You must be signed in to add a product');
+      return;
+    }
+
     if (!name || !title || !price || !description || !category || !stock) {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
@@ -45,17 +59,17 @@ const AddProduct = () => {
     try {
       const productId = `PROD-${Date.now()}`;
       const categoryId = getCategoryId(category);
-      
+
       const productData = {
         id: productId,
-        name: name,
-        title: title,
+        name,
+        title,
         price: parseFloat(price),
         description,
         category: {
           id: categoryId,
           name: category,
-          image: imageUrl ? [imageUrl] : ['https://via.placeholder.com/150']
+          image: imageUrl ? [imageUrl] : ['https://via.placeholder.com/150'],
         },
         images: imageUrl ? [imageUrl] : ['https://via.placeholder.com/150'],
         createdAt: serverTimestamp(),
@@ -66,18 +80,16 @@ const AddProduct = () => {
         reviews: 0,
         sale: false,
         salePrice: null,
-        brand: "Default Brand",
+        brand: 'Default Brand',
         colors: [],
         sizes: [],
-        tags: []
+        tags: [],
+        userId: auth.currentUser.uid, // For rules validation
       };
 
       await setDoc(doc(db, 'products', productId), productData);
-      console.log('Product added with ID: ', productId);
-      console.log('Category ID: ', categoryId);
-      
       Alert.alert('Success', 'Product added successfully');
-      
+
       setName('');
       setTitle('');
       setPrice('');
@@ -85,11 +97,12 @@ const AddProduct = () => {
       setCategory('');
       setImageUrl('');
       setStock('');
-      
+
       router.back();
     } catch (error) {
       console.error('Error adding product:', error);
-      Alert.alert('Error', 'Failed to add product. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      Alert.alert('Error', `Failed to add product: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -97,112 +110,117 @@ const AddProduct = () => {
 
   return (
     <>
-      <Stack.Screen 
-        options={{ 
-          headerShown: false 
-        }} 
-      />
-      <View style={[styles.container, { marginTop: headerHeight }]}>
-        <View style={styles.headerContainer}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="arrow-back" size={28} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Add New Product</Text>
-          <View style={{ width: 40 }} />
-        </View>
-        <View style={styles.headerLine} />
-
-        <ScrollView style={styles.scrollView}>
-          <View style={styles.form}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Product Name</Text>
-              <TextInput
-                style={styles.input}
-                value={name}
-                onChangeText={setName}
-                placeholder="Enter product name"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Product Title</Text>
-              <TextInput
-                style={styles.input}
-                value={title}
-                onChangeText={setTitle}
-                placeholder="Enter product title"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Price</Text>
-              <TextInput
-                style={styles.input}
-                value={price}
-                onChangeText={setPrice}
-                placeholder="Enter price"
-                keyboardType="numeric"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Stock</Text>
-              <TextInput
-                style={styles.input}
-                value={stock}
-                onChangeText={setStock}
-                placeholder="Enter stock quantity"
-                keyboardType="numeric"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Category</Text>
-              <TextInput
-                style={styles.input}
-                value={category}
-                onChangeText={setCategory}
-                placeholder="Enter category (makeup, hand bags, skin care, etc.)"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Description</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={description}
-                onChangeText={setDescription}
-                placeholder="Enter product description"
-                multiline
-                numberOfLines={4}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Image URL (Optional)</Text>
-              <TextInput
-                style={styles.input}
-                value={imageUrl}
-                onChangeText={setImageUrl}
-                placeholder="Enter image URL"
-              />
-            </View>
-
-            <TouchableOpacity 
-              style={styles.submitButton}
-              onPress={handleAddProduct}
-              disabled={loading}
-            >
-              <Text style={styles.submitButtonText}>
-                {loading ? 'Adding...' : 'Add Product'}
-              </Text>
+      <Stack.Screen options={{ headerShown: false }} />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={headerHeight}
+      >
+        <View style={styles.container}>
+          <View style={styles.headerContainer}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={28} color="#fff" />
             </TouchableOpacity>
+            <Text style={styles.headerTitle}>Add New Product</Text>
+            <View style={{ width: 40 }} />
           </View>
-        </ScrollView>
-      </View>
+          <View style={styles.headerLine} />
+
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollViewContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.form}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Product Name</Text>
+                <TextInput
+                  style={styles.input}
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="Enter product name"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Product Title</Text>
+                <TextInput
+                  style={styles.input}
+                  value={title}
+                  onChangeText={setTitle}
+                  placeholder="Enter product title"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Price</Text>
+                <TextInput
+                  style={styles.input}
+                  value={price}
+                  onChangeText={setPrice}
+                  placeholder="Enter price"
+                  keyboardType="numeric"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Stock</Text>
+                <TextInput
+                  style={styles.input}
+                  value={stock}
+                  onChangeText={setStock}
+                  placeholder="Enter stock quantity"
+                  keyboardType="numeric"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Category</Text>
+                <TextInput
+                  style={styles.input}
+                  value={category}
+                  onChangeText={setCategory}
+                  placeholder="Enter category (makeup, hand bags, skin care, etc.)"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Description</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  value={description}
+                  onChangeText={setDescription}
+                  placeholder="Enter product description"
+                  multiline
+                  numberOfLines={4}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Image URL (Optional)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={imageUrl}
+                  onChangeText={setImageUrl}
+                  placeholder="Enter image URL"
+                />
+              </View>
+
+              <TouchableOpacity
+                style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+                onPress={handleAddProduct}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.submitButtonText}>Add Product</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
     </>
   );
 };
@@ -224,7 +242,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
     textAlign: 'center',
-    marginLeft: -24,
   },
   headerLine: {
     height: 1,
@@ -235,6 +252,9 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  scrollViewContent: {
+    paddingBottom: 100,
   },
   form: {
     padding: 20,
@@ -266,6 +286,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 20,
   },
+  submitButtonDisabled: {
+    backgroundColor: Colors.primary,
+  },
   submitButtonText: {
     color: '#fff',
     fontSize: 16,
@@ -273,4 +296,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AddProduct; 
+export default AddProduct;

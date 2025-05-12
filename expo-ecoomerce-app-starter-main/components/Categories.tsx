@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     letterSpacing: 0.6,
-    color: Colors.black,
+    color: Colors.primary,
   },
   titleBtn: {
     fontSize: 14,

@@ -216,7 +216,7 @@ const ProductsManagement = () => {
               <Image source={{ uri: product.images[0] }} style={styles.productImage} />
               <View style={styles.productInfo}>
                 <Text style={styles.productName}>{product.title}</Text>
-                <Text style={styles.productPrice}>${product.price}</Text>
+                <Text style={styles.productPrice}>₪{product.price}</Text>
                 {product.discount ? (
                   <Text style={styles.productDiscount}>Discount: {product.discount}%</Text>
                 ) : null}

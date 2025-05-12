@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, FlatList, Image, ActivityIndicator, TouchableOpacity, TextInput } from 'react-native';
+import { StyleSheet, Text, View, FlatList, Image, ActivityIndicator, TouchableOpacity, TextInput, Modal, ScrollView } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import { router, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,7 +7,6 @@ import Slider from '@react-native-community/slider';
 import { Colors } from '@/constants/Colors';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/config/firebase';
-import { ScrollView } from 'react-native';
 import Categories from '@/components/Categories';
 import ProductList from '@/components/ProductList';
 import { CategoryType, ProductType } from '@/types/type';
@@ -37,6 +36,11 @@ const HomeScreen = (props: Props) => {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [maxPrice, setMaxPrice] = useState(1000);
+  const [showChatBot, setShowChatBot] = useState(false);
+  const [chatStep, setChatStep] = useState(0);
+  const [chatOption, setChatOption] = useState<string | null>(null);
+  const [userAnswers, setUserAnswers] = useState<any>({});
+  const [chatInput, setChatInput] = useState('');
 
   // Fetch data on component mount
   useEffect(() => {
@@ -60,14 +64,12 @@ const HomeScreen = (props: Props) => {
                            saleProducts.filter(p => p.categoryId === selectedCategoryId).length +
                            flashSaleProducts.filter(p => p.categoryId === selectedCategoryId).length;
       console.log(`Products in category ${selectedCategoryId}: ${filteredCount}`);
-      // Log products with mismatched or undefined categoryId
       const mismatchedProducts = [...products, ...saleProducts, ...flashSaleProducts].filter(
         p => p.categoryId && !CATEGORY_MAPPINGS.some(c => c.id === p.categoryId)
       );
       const undefinedCategoryProducts = [...products, ...saleProducts, ...flashSaleProducts].filter(p => !p.categoryId);
       console.log('Products with invalid categoryId:', mismatchedProducts.map(p => ({ id: p.id, categoryId: p.categoryId })));
       console.log('Products with undefined categoryId:', undefinedCategoryProducts.map(p => ({ id: p.id })));
-      // Highlight Gifts and Handbags specifically
       const giftsProducts = [...products, ...saleProducts, ...flashSaleProducts].filter(p => p.categoryId === '9');
       const handbagsProducts = [...products, ...saleProducts, ...flashSaleProducts].filter(p => p.categoryId === '4');
       console.log('Gifts Products (categoryId: 9):', giftsProducts.map(p => ({ id: p.id, title: p.title })));
@@ -180,7 +182,7 @@ const HomeScreen = (props: Props) => {
       setSaleProducts(saleProductsData);
       console.log('📊 Sale Product Category IDs:', saleProductsData.map(p => ({ id: p.id, categoryId: p.categoryId })));
     } catch (error) {
-      console.error('Error in getSale personallySaleProducts:', error);
+      console.error('Error in getSaleProducts:', error);
     }
   };
 
@@ -216,7 +218,7 @@ const HomeScreen = (props: Props) => {
               categoryId,
               discount: Number(data.discount || 0),
               originalPrice: Number(data.originalPrice || data.price || 0),
-              productType: 'sale', // Force productType to 'sale' for flash sale
+              productType: 'sale',
               stock: Number(data.stock) || 0,
             } as ProductType;
           }
@@ -262,7 +264,7 @@ const HomeScreen = (props: Props) => {
   // Render flash sale item
   const renderFlashSaleItem = ({ item }: { item: ProductType }) => {
     const originalPrice = item.originalPrice || item.price;
-    const discount = item.discount || 15; // Use item.discount if available, else fallback to 15%
+    const discount = item.discount || 15;
     const discountedPrice = originalPrice - (originalPrice * (discount / 100));
 
     return (
@@ -291,6 +293,243 @@ const HomeScreen = (props: Props) => {
     );
   };
 
+  // Chatbot logic
+  const handleChatOption = (option: string) => {
+    setChatOption(option);
+    setChatStep(1);
+    setUserAnswers({});
+  };
+
+  const handleAnswer = (question: string, answer: string) => {
+    setUserAnswers({ ...userAnswers, [question]: answer });
+    setChatStep(chatStep + 1);
+  };
+
+  const handleChatInputSubmit = () => {
+    if (chatInput.trim()) {
+      const chatContent = getChatContent();
+      if (chatContent.key) {
+        handleAnswer(chatContent.key, chatInput);
+      }
+      setChatInput('');
+    }
+  };
+
+  interface ChatContent {
+    question?: string;
+    options?: string[];
+    key?: string;
+    result?: string;
+    products?: ProductType[];
+    routine?: string[];
+  }
+
+  const getChatContent = (): ChatContent => {
+    switch (chatOption) {
+      case 'skinType':
+        switch (chatStep) {
+          case 0:
+            return {
+              question: 'Let’s detect your skin type! How does your skin feel after cleansing?',
+              options: ['Tight and dry', 'Oily and shiny', 'Balanced', 'Combination (oily T-zone, dry cheeks)'],
+              key: 'skinFeel'
+            };
+          case 1:
+            return {
+              question: 'Does your skin ever feel sensitive or irritated?',
+              options: ['Often', 'Sometimes', 'Rarely', 'Never'],
+              key: 'sensitivity'
+            };
+          case 2:
+            return {
+              question: 'Do you experience breakouts or acne?',
+              options: ['Frequently', 'Occasionally', 'Rarely', 'Never'],
+              key: 'acne'
+            };
+          default:
+            const skinType = determineSkinType(userAnswers);
+            const recommendations = recommendSkinCareProducts(skinType);
+            return {
+              result: `Your skin type is ${skinType}. Here's a recommended routine:`,
+              products: recommendations,
+              routine: getSkinCareRoutine(skinType)
+            };
+        }
+      case 'accessories':
+        switch (chatStep) {
+          case 0:
+            return {
+              question: 'What is the primary color of your outfit?',
+              options: ['Neutral (Black, White, Gray)', 'Warm (Red, Orange, Yellow)', 'Cool (Blue, Green, Purple)', 'Metallic (Gold, Silver)'],
+              key: 'outfitColor'
+            };
+          case 1:
+            return {
+              question: 'What occasion are you styling for?',
+              options: ['Casual', 'Work', 'Evening Event', 'Formal'],
+              key: 'occasion'
+            };
+          default:
+            const recommendations = recommendAccessories(userAnswers);
+            return {
+              result: 'Here are some accessories to match your outfit:',
+              products: recommendations
+            };
+        }
+      case 'perfume':
+        switch (chatStep) {
+          case 0:
+            return {
+              question: 'Which scent family do you prefer?',
+              options: ['Floral', 'Woody', 'Citrus', 'Oriental'],
+              key: 'scentFamily'
+            };
+          case 1:
+            return {
+              question: 'Do you prefer a light or strong fragrance?',
+              options: ['Light', 'Moderate', 'Strong'],
+              key: 'intensity'
+            };
+          default:
+            const recommendations = recommendPerfume(userAnswers);
+            return {
+              result: 'Here’s a perfume that matches your preferences:',
+              products: recommendations
+            };
+        }
+      case 'bodyProblems':
+        switch (chatStep) {
+          case 0:
+            return {
+              question: 'What body concern would you like to address?',
+              options: ['Dry skin', 'Body acne', 'Stretch marks', 'Cellulite'],
+              key: 'bodyConcern'
+            };
+          case 1:
+            return {
+              question: 'How severe is this concern?',
+              options: ['Mild', 'Moderate', 'Severe'],
+              key: 'severity'
+            };
+          default:
+            const recommendations = recommendBodyCare(userAnswers);
+            return {
+              result: 'Here’s a routine to address your concern:',
+              products: recommendations,
+              routine: getBodyCareRoutine(userAnswers.bodyConcern)
+            };
+        }
+      case 'outfitDecorations':
+        switch (chatStep) {
+          case 0:
+            return {
+              question: 'What is the style of your outfit?',
+              options: ['Casual', 'Bohemian', 'Elegant', 'Edgy'],
+              key: 'outfitStyle'
+            };
+          case 1:
+            return {
+              question: 'What type of bag are you looking for?',
+              options: ['Tote', 'Crossbody', 'Clutch', 'Backpack'],
+              key: 'bagType'
+            };
+          default:
+            const recommendations = recommendOutfitDecorations(userAnswers);
+            return {
+              result: 'Here’s a styled look for your outfit:',
+              products: recommendations
+            };
+        }
+      default:
+        return {
+          options: [
+            'Let’s Detect your skin type',
+            'Let’s See What Color of Accessories Fit you',
+            'Let’s See What is Your Favorite Perfume',
+            'Let’s Solve Your Body Problems',
+            'Let’s Style Your Outfit Decorations'
+          ]
+        };
+    }
+  };
+
+  const determineSkinType = (answers: any) => {
+    if (answers.skinFeel === 'Tight and dry') return 'Dry';
+    if (answers.skinFeel === 'Oily and shiny') return 'Oily';
+    if (answers.skinFeel === 'Combination (oily T-zone, dry cheeks)') return 'Combination';
+    return 'Normal';
+  };
+
+  const recommendSkinCareProducts = (skinType: string) => {
+    const skinCareProducts = products.filter(p => p.categoryId === '2');
+    switch (skinType) {
+      case 'Dry':
+        return skinCareProducts.filter(p => p.description.toLowerCase().includes('hydrating') || p.description.toLowerCase().includes('moisturizing'));
+      case 'Oily':
+        return skinCareProducts.filter(p => p.description.toLowerCase().includes('oil-control') || p.description.toLowerCase().includes('mattifying'));
+      case 'Combination':
+        return skinCareProducts.filter(p => p.description.toLowerCase().includes('balancing'));
+      default:
+        return skinCareProducts;
+    }
+  };
+
+  const getSkinCareRoutine = (skinType: string) => {
+    switch (skinType) {
+      case 'Dry':
+        return ['Cleanse with a gentle cream cleanser', 'Apply a hydrating toner', 'Use a rich moisturizer', 'Apply sunscreen daily'];
+      case 'Oily':
+        return ['Cleanse with a gel cleanser', 'Use an exfoliating toner', 'Apply a lightweight moisturizer', 'Use oil-free sunscreen'];
+      case 'Combination':
+        return ['Cleanse with a balancing cleanser', 'Use a mild toner', 'Apply a balanced moisturizer', 'Use sunscreen daily'];
+      default:
+        return ['Cleanse with a gentle cleanser', 'Apply a light toner', 'Use a daily moisturizer', 'Apply sunscreen'];
+    }
+  };
+
+  const recommendAccessories = (answers: any) => {
+    const accessories = products.filter(p => p.categoryId === '3' || p.categoryId === '8' || p.categoryId === '4');
+    if (answers.outfitColor?.includes('Neutral')) {
+      return accessories.filter(p => p.description.toLowerCase().includes('gold') || p.description.toLowerCase().includes('silver'));
+    }
+    return accessories;
+  };
+
+  const recommendPerfume = (answers: any) => {
+    const perfumes = products.filter(p => p.categoryId === '7');
+    if (answers.scentFamily) {
+      return perfumes.filter(p => p.description.toLowerCase().includes(answers.scentFamily.toLowerCase()));
+    }
+    return perfumes;
+  };
+
+  const recommendBodyCare = (answers: any) => {
+    const bodyCare = products.filter(p => p.categoryId === '1');
+    if (answers.bodyConcern) {
+      return bodyCare.filter(p => p.description.toLowerCase().includes(answers.bodyConcern.toLowerCase()));
+    }
+    return bodyCare;
+  };
+
+  const getBodyCareRoutine = (concern: string) => {
+    switch (concern) {
+      case 'Dry skin':
+        return ['Use a moisturizing body wash', 'Apply a rich body cream daily', 'Exfoliate weekly'];
+      case 'Body acne':
+        return ['Use an acne-fighting body wash', 'Apply a targeted treatment', 'Moisturize with a non-comedogenic lotion'];
+      default:
+        return ['Use a gentle body wash', 'Moisturize daily', 'Exfoliate weekly'];
+    }
+  };
+
+  const recommendOutfitDecorations = (answers: any) => {
+    const items = products.filter(p => p.categoryId === '4' || p.categoryId === '3' || p.categoryId === '7');
+    if (answers.outfitStyle) {
+      return items.filter(p => p.description.toLowerCase().includes(answers.outfitStyle.toLowerCase()));
+    }
+    return items;
+  };
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -302,7 +541,7 @@ const HomeScreen = (props: Props) => {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
         <View style={styles.headerContainer}>
           <Image
             source={require('@/assets/images/mhh.png')}
@@ -517,13 +756,128 @@ const HomeScreen = (props: Props) => {
             </>
           )}
         </ScrollView>
+
+        <TouchableOpacity
+          style={styles.chatBotButton}
+          onPress={() => setShowChatBot(true)}
+        >
+          <Image
+            source={require('@/assets/images/chatbot.jpg')}
+            style={styles.chatBotIcon}
+          />
+        </TouchableOpacity>
+
+        <Modal
+          visible={showChatBot}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => {
+            setShowChatBot(false);
+            setChatStep(0);
+            setChatOption(null);
+          }}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.chatBotContainer}>
+              <View style={styles.chatBotHeader}>
+                <Text style={styles.chatBotTitle}>Chatbot</Text>
+                <TouchableOpacity onPress={() => {
+                  setShowChatBot(false);
+                  setChatStep(0);
+                  setChatOption(null);
+                }}>
+                  <Ionicons name="close" size={24} color={Colors.black} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.chatBotContent}>
+                {(() => {
+                  const chatContent = getChatContent();
+                  if (chatContent.question && chatContent.options && chatContent.key) {
+                    return (
+                      <View style={styles.chatBubbleContainer}>
+                        <View style={styles.chatBotQuestionBubble}>
+                          <Text style={styles.chatBotQuestionText}>{chatContent.question}</Text>
+                        </View>
+                        <View style={styles.chatOptionsContainer}>
+                          {chatContent.options.map((option, index) => (
+                            <TouchableOpacity
+                              key={index}
+                              style={styles.chatBotOptionButton}
+                              onPress={() => handleAnswer(chatContent.key!, option)}
+                            >
+                              <Text style={styles.chatBotOptionText}>{option}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                        <View style={styles.chatInputContainer}>
+                          <TextInput
+                            style={styles.chatInput}
+                            placeholder="Type your answer..."
+                            value={chatInput}
+                            onChangeText={setChatInput}
+                          />
+                          <TouchableOpacity
+                            style={styles.sendButton}
+                            onPress={handleChatInputSubmit}
+                            disabled={!chatInput.trim()}
+                          >
+                            <Ionicons
+                              name="send"
+                              size={20}
+                              color={chatInput.trim() ? Colors.primary : Colors.gray}
+                            />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    );
+                  } else if (chatContent.result) {
+                    return (
+                      <View style={styles.chatBubbleContainer}>
+                        <View style={styles.chatBotResultBubble}>
+                          <Text style={styles.chatBotResultText}>{chatContent.result}</Text>
+                        </View>
+                        {chatContent.routine && (
+                          <View style={styles.routineContainer}>
+                            <Text style={styles.routineTitle}>Recommended Routine:</Text>
+                            {chatContent.routine.map((step, index) => (
+                              <Text key={index} style={styles.routineStep}>{`${index + 1}. ${step}`}</Text>
+                            ))}
+                          </View>
+                        )}
+                        <ProductList
+                          products={chatContent.products || []}
+                          flatlist={false}
+                        />
+                      </View>
+                    );
+                  } else if (chatContent.options) {
+                    return (
+                      <View style={styles.chatOptionsContainer}>
+                        {chatContent.options.map((option, index) => (
+                          <TouchableOpacity
+                            key={index}
+                            style={styles.chatBotOptionButton}
+                            onPress={() => handleChatOption(option.replace('Let’s ', '').toLowerCase().replace(/\s/g, ''))}
+                          >
+                            <Text style={styles.chatBotOptionText}>{option}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    );
+                  }
+                  return null;
+                })()}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: Colors.background,
   },
@@ -781,6 +1135,144 @@ const styles = StyleSheet.create({
   },
   flashSaleList: {
     paddingHorizontal: 16,
+  },
+  chatBotButton: {
+    position: 'absolute',
+    bottom: 75,
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: Colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  chatBotIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 30,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  chatBotContainer: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+    paddingBottom: 20,
+  },
+  chatBotHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightGray,
+    backgroundColor: Colors.lightbeige,
+  },
+  chatBotTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+  chatBotContent: {
+    padding: 15,
+    backgroundColor: Colors.background,
+  },
+  chatBubbleContainer: {
+    flex: 1,
+    marginBottom: 20,
+  },
+  chatBotQuestionBubble: {
+    backgroundColor: Colors.lightGray,
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 15,
+    alignSelf: 'flex-start',
+    maxWidth: '80%',
+  },
+  chatBotQuestionText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: Colors.black,
+  },
+  chatBotResultBubble: {
+    backgroundColor: Colors.primary,
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 15,
+    alignSelf: 'flex-start',
+    maxWidth: '80%',
+  },
+  chatBotResultText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.white,
+  },
+  chatOptionsContainer: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    marginBottom: 10,
+  },
+  chatBotOptionButton: {
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    borderRadius: 15,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    marginBottom: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chatBotOptionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: Colors.primary,
+    textAlign: 'center',
+  },
+  chatInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.white,
+    borderRadius: 20,
+    paddingHorizontal: 15,
+    marginTop: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  chatInput: {
+    flex: 1,
+    height: 40,
+    fontSize: 14,
+    color: Colors.black,
+  },
+  sendButton: {
+    padding: 10,
+  },
+  routineContainer: {
+    marginVertical: 10,
+    padding: 15,
+    backgroundColor: Colors.white,
+    borderRadius: 10,
+  },
+ 
+  
+  routineStep: {
+    fontSize: 14,
+    color: Colors.black,
+    marginBottom: 5,
   },
 });
 

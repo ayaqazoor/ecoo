@@ -99,12 +99,16 @@ const NotificationsScreen = () => {
         );
         onSnapshot(userOrdersQuery, (snapshot) => {
           snapshot.docChanges().forEach((change) => {
-            if (change.type === 'modified') {
-              const order = { id: change.doc.id, ...change.doc.data() } as Order;
-              if (order.status === 'confirmed') {
-                sendUserShippingNotification(order)
-                  .catch(error => console.error('Error sending shipping notification:', error));
-              }
+            const order = { id: change.doc.id, ...change.doc.data() } as Order;
+            
+            if (change.type === 'added') {
+              // Send thank you notification when order is placed
+              sendUserThankYouNotification(order)
+                .catch(error => console.error('Error sending thank you notification:', error));
+            } else if (change.type === 'modified' && order.status === 'confirmed') {
+              // Send confirmation notification when order is confirmed
+              sendUserOrderConfirmationNotification(order)
+                .catch(error => console.error('Error sending confirmation notification:', error));
             }
           });
         }, error => console.error('Error listening to user orders:', error));
@@ -167,8 +171,8 @@ const NotificationsScreen = () => {
     }
   };
 
-  // Function to send user shipping notification
-  const sendUserShippingNotification = async (order: Order) => {
+  // Function to send thank you notification to user after placing order
+  const sendUserThankYouNotification = async (order: Order) => {
     try {
       const userDoc = await getDocs(query(
         collection(db, 'users'),
@@ -184,8 +188,8 @@ const NotificationsScreen = () => {
       const message = {
         to: userToken,
         sound: 'default',
-        title: 'تم شحن طلبيتك!',
-        body: 'تم شحن طلبيتك وستصل خلال 2-3 أيام عمل.',
+        title: 'شكراً لشرائك من M&H Store',
+        body: 'نشكرك على ثقتك بنا. سنقوم بمعالجة طلبيتك في أقرب وقت ممكن.',
         data: { orderId: order.id },
       };
 
@@ -199,9 +203,47 @@ const NotificationsScreen = () => {
       });
 
       const result = await response.json();
-      console.log('User shipping notification sent:', result);
+      console.log('User thank you notification sent:', result);
     } catch (error) {
-      console.error('Error sending user shipping notification:', error);
+      console.error('Error sending user thank you notification:', error);
+    }
+  };
+
+  // Function to send order confirmation notification to user
+  const sendUserOrderConfirmationNotification = async (order: Order) => {
+    try {
+      const userDoc = await getDocs(query(
+        collection(db, 'users'),
+        where('uid', '==', order.userId)
+      ));
+      const userToken = userDoc.docs[0]?.data().expoPushToken;
+
+      if (!userToken) {
+        console.log('No push token for user:', order.userId);
+        return;
+      }
+
+      const message = {
+        to: userToken,
+        sound: 'default',
+        title: 'تم تأكيد طلبيتك',
+        body: 'تم تأكيد طلبيتك وستصل خلال 2-3 أيام عمل.',
+        data: { orderId: order.id },
+      };
+
+      const response = await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(message),
+      });
+
+      const result = await response.json();
+      console.log('User order confirmation notification sent:', result);
+    } catch (error) {
+      console.error('Error sending user order confirmation notification:', error);
     }
   };
 
