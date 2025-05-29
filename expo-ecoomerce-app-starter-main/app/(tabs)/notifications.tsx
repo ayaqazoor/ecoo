@@ -1,12 +1,16 @@
-import { View, Text, StyleSheet, ScrollView, Platform, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Platform, Alert, Image, TouchableOpacity } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import * as Notifications from 'expo-notifications';
 import { getAuth } from 'firebase/auth';
-import { doc, setDoc, collection, where, query, orderBy, addDoc, onSnapshot, Timestamp, getDocs, QueryDocumentSnapshot, DocumentData, getDoc } from 'firebase/firestore';
+import { 
+  doc, setDoc, collection, where, query, orderBy, addDoc, 
+  onSnapshot, Timestamp, getDocs, QueryDocumentSnapshot, DocumentData, getDoc 
+} from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import Constants from 'expo-constants';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
+import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 
 // Define a type for in-app notifications
 type InAppNotification = {
@@ -15,6 +19,7 @@ type InAppNotification = {
   body: string;
   timestamp: string;
   orderId?: string;
+  isOrder?: boolean; // Flag to identify order-based notifications
 };
 
 // Notification handler for system notifications
@@ -30,9 +35,13 @@ const PushNotifications = () => {
   const [token, setToken] = useState<string>('');
   const [inAppNotifications, setInAppNotifications] = useState<InAppNotification[]>([]);
   const [orderDetailsCache, setOrderDetailsCache] = useState<{ [orderId: string]: any }>({});
+  const [isAdmin, setIsAdmin] = useState(false);
   const auth = getAuth();
   const user = auth.currentUser;
   const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+  const router = useRouter();
+  const { tab } = useLocalSearchParams();
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   // Real-time listener for notifications
   useEffect(() => {
@@ -40,6 +49,7 @@ const PushNotifications = () => {
       console.log('No user logged in');
       setInAppNotifications([]);
       setOrderDetailsCache({});
+      setIsAdmin(false);
       return;
     }
 
@@ -51,7 +61,7 @@ const PushNotifications = () => {
       orderBy('createdAt', 'desc')
     );
 
-    const unsubscribe = onSnapshot(notificationsQuery, async (querySnapshot) => {
+    const unsubscribeNotifications = onSnapshot(notificationsQuery, async (querySnapshot) => {
       try {
         const notifications = await Promise.all(querySnapshot.docs.slice(0, 5).map(async (docSnap) => {
           const data = docSnap.data();
@@ -71,19 +81,82 @@ const PushNotifications = () => {
             body: data.body || 'No Body',
             timestamp: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
             orderId: data.orderId,
+            isOrder: false,
           };
         }));
-        setInAppNotifications(notifications);
+        setInAppNotifications(prev => {
+          // Merge notifications, keeping only the latest 5 non-order notifications
+          const existingOrderNotifications = prev.filter(n => n.isOrder);
+          return [...notifications, ...existingOrderNotifications].slice(0, 10);
+        });
       } catch (error) {
-        console.error('Error processing onSnapshot data:', error);
+        console.error('Error processing notifications onSnapshot data:', error);
       }
     }, (error) => {
-      console.error('onSnapshot error:', error);
+      console.error('Notifications onSnapshot error:', error);
       Alert.alert('Error', 'Failed to fetch notifications: ' + error.message);
     });
 
-    return () => unsubscribe();
+    return () => unsubscribeNotifications();
   }, [user]);
+
+  // Real-time listener for orders (for admins)
+  useEffect(() => {
+    if (!user || !isAdmin) {
+      setInAppNotifications(prev => prev.filter(n => !n.isOrder));
+      return;
+    }
+
+    console.log('Setting up onSnapshot for orders');
+
+    const ordersQuery = query(
+      collection(db, 'orders'),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribeOrders = onSnapshot(ordersQuery, (querySnapshot) => {
+      try {
+        const orderNotifications = querySnapshot.docs.map((docSnap) => {
+          const data = docSnap.data();
+          const itemsSummary = data.items?.map((item: any) => `${item.name || 'Unknown'} (x${item.quantity})`).join(', ') || 'No items';
+          return {
+            id: docSnap.id,
+            title: 'طلبية جديدة',
+            body: `من ${data.customerName || 'Unknown'} - ${data.customerCity || 'Unknown'}: ${itemsSummary}، المجموع: ₪${data.total || 0}`,
+            timestamp: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+            orderId: docSnap.id,
+            isOrder: true,
+          } as InAppNotification;
+        });
+        setInAppNotifications(prev => {
+          // Merge order notifications with existing non-order notifications
+          const existingNonOrderNotifications = prev.filter(n => !n.isOrder).slice(0, 5);
+          return [...orderNotifications, ...existingNonOrderNotifications].slice(0, 10);
+        });
+        // Cache order details
+        querySnapshot.docs.forEach((docSnap) => {
+          const data = docSnap.data();
+          setOrderDetailsCache(prev => ({
+            ...prev,
+            [docSnap.id]: {
+              customerName: data.customerName || 'Unknown',
+              customerCity: data.customerCity || data.shippingInfo?.city || 'Unknown',
+              total: data.total || 0,
+              items: data.items || [],
+              status: data.status || 'pending',
+            },
+          }));
+        });
+      } catch (error) {
+        console.error('Error processing orders onSnapshot data:', error);
+      }
+    }, (error) => {
+      console.error('Orders onSnapshot error:', error);
+      Alert.alert('Error', 'Failed to fetch orders: ' + error.message);
+    });
+
+    return () => unsubscribeOrders();
+  }, [user, isAdmin]);
 
   useEffect(() => {
     if (Platform.OS === 'android') {
@@ -103,34 +176,12 @@ const PushNotifications = () => {
 
     // Listener for foreground notifications
     const foregroundSubscription = Notifications.addNotificationReceivedListener((notification) => {
-      const { title, body, data } = notification.request.content;
-      if (title && body && user) {
-        console.log('Foreground notification received:', { title, body, orderId: data?.orderId });
-        addDoc(collection(db, 'notifications'), {
-          userId: user.uid,
-          title,
-          body,
-          orderId: data?.orderId || null,
-          createdAt: Timestamp.fromDate(new Date()),
-          status: 'delivered',
-        }).catch((error) => console.error('Error saving foreground notification:', error));
-      }
+      // Removed duplicate notification addition
     });
 
     // Listener for background/quit state notifications
     const backgroundSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      const { title, body, data } = response.notification.request.content;
-      if (title && body && user) {
-        console.log('Background notification received:', { title, body, orderId: data?.orderId });
-        addDoc(collection(db, 'notifications'), {
-          userId: user.uid,
-          title,
-          body,
-          orderId: data?.orderId || null,
-          createdAt: Timestamp.fromDate(new Date()),
-          status: 'delivered',
-        }).catch((error) => console.error('Error saving background notification:', error));
-      }
+      // Removed duplicate notification addition
     });
 
     return () => {
@@ -183,6 +234,7 @@ const PushNotifications = () => {
       // Save to Firestore for in-app display
       await addDoc(collection(db, 'notifications'), {
         userId,
+        senderId: getAuth().currentUser?.uid || '',
         title,
         body,
         orderId: orderId || null,
@@ -220,7 +272,6 @@ const PushNotifications = () => {
     }
   };
 
-  // Notify admins on order
   const notifyAdminsOnOrder = async (userName: string, orderDetails: string, orderId: string) => {
     try {
       const adminQuery = query(collection(db, 'users'), where('role', '==', 'admin'));
@@ -247,7 +298,6 @@ const PushNotifications = () => {
     }
   };
 
-  // Send thank you notification
   const sendThankYouNotification = async (userId: string, orderId: string) => {
     try {
       const userDoc = await getDocs(query(collection(db, 'users'), where('uid', '==', userId)));
@@ -273,7 +323,6 @@ const PushNotifications = () => {
     }
   };
 
-  // Send order confirmation notification
   const sendOrderConfirmationNotification = async (userId: string, orderId: string) => {
     try {
       const userDoc = await getDocs(query(collection(db, 'users'), where('uid', '==', userId)));
@@ -299,7 +348,6 @@ const PushNotifications = () => {
     }
   };
 
-  // Helper to get order details (from cache or Firestore)
   const getOrderDetails = async (orderId: string) => {
     if (orderDetailsCache[orderId]) return orderDetailsCache[orderId];
     try {
@@ -313,66 +361,123 @@ const PushNotifications = () => {
     return null;
   };
 
-  // Helper to get doc ref
   const docRef = (col: string, id: string) => doc(db, col, id);
 
+  useEffect(() => {
+    if (!user) {
+      setInAppNotifications([]);
+      setOrderDetailsCache({});
+      setIsAdmin(false);
+      return;
+    }
+    const fetchRole = async () => {
+      try {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        setIsAdmin(userDoc.exists() && userDoc.data()?.role === 'admin');
+      } catch (e) {
+        setIsAdmin(false);
+      }
+    };
+    fetchRole();
+  }, [user]);
+
+  useEffect(() => {
+    if (tab === 'orders') {
+      setActiveTab('orders');
+    }
+  }, [tab]);
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>🔔 إشعارات M&H</Text>
-      <Text style={styles.token}>{token || 'جارٍ توليد التوكن...'}</Text>
-      <View style={styles.notificationsContainer}>
-        <Text style={styles.notificationsTitle}>الإشعارات داخل التطبيق</Text>
-        {inAppNotifications.length === 0 ? (
-          <Text style={styles.noNotifications}>لا توجد إشعارات حالياً</Text>
-        ) : (
-          inAppNotifications.map((notification) => {
-            let order = notification.orderId && orderDetailsCache[notification.orderId];
-            let userName = '';
-            let total = null;
-            let items: any[] = [];
-            if (order) {
-              userName = order.customerName || order.userName || '';
-              total = order.total;
-              items = order.items || [];
-            }
-            return (
-              <View key={notification.id} style={styles.notificationCard}>
-                {order && (
-                  <Text style={styles.userName}>{userName}</Text>
-                )}
-                <View style={{ flexDirection: 'column', gap: 8 }}>
-                  {order && items.length > 0 ? (
-                    items.map((item, idx) => (
-                      <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                        <Image source={{ uri: item.images && item.images.length > 0 ? item.images[0] : undefined }} style={styles.notificationImage} />
-                        <Text style={[styles.productName, { flex: 1, marginLeft: 8 }]} numberOfLines={1} ellipsizeMode="tail">{item.name || item.title || 'اسم غير متوفر'}</Text>
-                        <Text style={styles.productQty}>x{item.quantity}</Text>
-                      </View>
-                    ))
-                  ) : (
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <View style={styles.notificationImagePlaceholder}>
-                        <Ionicons name="notifications-outline" size={32} color="#ccc" />
-                      </View>
-                      <View style={{ flex: 1, marginLeft: 12 }}>
-                        <Text style={styles.notificationTitle}>{notification.title}</Text>
-                        <Text style={styles.notificationBody}>{notification.body}</Text>
-                      </View>
-                    </View>
-                  )}
-                </View>
-                {order && (
-                  <Text style={styles.orderTotal}>المجموع: ₪{total}</Text>
-                )}
-                <Text style={styles.notificationTimestamp}>
-                  {new Date(notification.timestamp).toLocaleString('ar-EG')}
-                </Text>
-              </View>
-            );
-          })
-        )}
+    <>
+      <View style={[styles.headerContainer, { marginTop: 40 }]}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => router.push('/(tabs)')}
+        >
+          <Ionicons name="arrow-back" size={28} color={Colors.primary} />
+        </TouchableOpacity>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' }}>
+          <Text style={styles.headerTitle}>Notifications</Text>
+        </View>
+        <TouchableOpacity 
+          style={styles.cartButton}
+          onPress={() => router.push('/cart')}
+        >
+          <Ionicons name="cart-outline" size={28} color={Colors.primary} />
+        </TouchableOpacity>
       </View>
-    </ScrollView>
+      <View style={styles.headerLine} />
+      <ScrollView contentContainerStyle={styles.container}>
+        <View style={styles.notificationsContainer}>
+          <Text style={styles.sectionTitle}>الإشعارات</Text>
+          {inAppNotifications.length === 0 ? (
+            <Text style={styles.noNotifications}>لا توجد إشعارات حالياً</Text>
+          ) : (
+            inAppNotifications.map((notification) => {
+              let order = notification.orderId && orderDetailsCache[notification.orderId];
+              let userName = '';
+              let userCity = '';
+              let total = null;
+              let items: any[] = [];
+              let status = '';
+              if (order) {
+                userName = order.customerName || order.userName || '';
+                userCity = order.customerCity || order.shippingInfo?.city || '';
+                total = order.total;
+                items = order.items || [];
+                status = order.status || 'pending';
+              }
+              const handlePress = () => {
+                if (notification.orderId && isAdmin) {
+                  router.push({ pathname: '/AdminPanel', params: { tab: 'orders', orderId: notification.orderId } });
+                }
+              };
+              const Wrapper = isAdmin && notification.orderId ? TouchableOpacity : View;
+              return (
+                <Wrapper key={notification.id} style={styles.notificationCard} {...(isAdmin && notification.orderId ? { activeOpacity: 0.7, onPress: handlePress } : {})}>
+                  {order && (
+                    <Text style={styles.userName}>
+                      {userName}
+                      {userCity ? ` - ${userCity}` : ''}
+                    </Text>
+                  )}
+                  <View style={{ flexDirection: 'column', gap: 8 }}>
+                    {order && items.length > 0 ? (
+                      items.map((item, idx) => (
+                        <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                          <Image source={{ uri: item.images && item.images.length > 0 ? item.images[0] : undefined }} style={styles.notificationImage} />
+                          <Text style={[styles.productName, { flex: 1, marginLeft: 8 }]} numberOfLines={1} ellipsizeMode="tail">{item.name || item.title || 'اسم غير متوفر'}</Text>
+                          <Text style={styles.productQty}>x{item.quantity}</Text>
+                        </View>
+                      ))
+                    ) : (
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <View style={styles.notificationImagePlaceholder}>
+                          <Ionicons name="notifications-outline" size={32} color="#ccc" />
+                        </View>
+                        <View style={{ flex: 1, marginLeft: 12 }}>
+                          <Text style={styles.notificationTitle}>{notification.title}</Text>
+                          <Text style={styles.notificationBody}>{notification.body}</Text>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                  {order && (
+                    <>
+                      <Text style={styles.orderTotal}>المجموع: ₪{total}</Text>
+                      <Text style={styles.orderStatus}>الحالة: {status}</Text>
+                    </>
+                  )}
+                  <Text style={styles.notificationTimestamp}>
+                    {new Date(notification.timestamp).toLocaleString('ar-EG')}
+                  </Text>
+                </Wrapper>
+              );
+            })
+          )}
+        </View>
+      </ScrollView>
+    </>
   );
 };
 
@@ -384,12 +489,6 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
     backgroundColor: '#fff',
   },
-  title: {
-    fontSize: 20,
-    textAlign: 'center',
-    marginBottom: 20,
-    fontWeight: 'bold',
-  },
   token: {
     fontSize: 10,
     color: 'gray',
@@ -399,11 +498,12 @@ const styles = StyleSheet.create({
   notificationsContainer: {
     marginTop: 20,
   },
-  notificationsTitle: {
+  sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 10,
     textAlign: 'center',
+    color: Colors.primary,
   },
   noNotifications: {
     fontSize: 14,
@@ -453,9 +553,54 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 2,
   },
-  userName: { fontSize: 15, fontWeight: 'bold', color: Colors.primary, marginBottom: 6, textAlign: 'left' },
-  productQty: { fontSize: 14, color: Colors.gray, marginLeft: 8, minWidth: 32, textAlign: 'right' },
-  orderTotal: { fontSize: 15, color: Colors.primary, fontWeight: 'bold', marginTop: 6, textAlign: 'left' },
+  userName: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: Colors.primary,
+    marginBottom: 6,
+    textAlign: 'left',
+  },
+  productQty: {
+    fontSize: 14,
+    color: Colors.gray,
+    marginLeft: 8,
+    minWidth: 32,
+    textAlign: 'right',
+  },
+  orderTotal: {
+    fontSize: 15,
+    color: Colors.primary,
+    fontWeight: 'bold',
+    marginTop: 6,
+    textAlign: 'left',
+  },
+  orderStatus: {
+    fontSize: 14,
+    color: Colors.gray,
+    marginTop: 4,
+    textAlign: 'left',
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+  },
+  backButton: {
+    padding: 5,
+  },
+  cartButton: {
+    padding: 5,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.primary,
+    marginLeft: 10,
+  },
+  headerLine: {
+    height: 1,
+    backgroundColor: Colors.primary,
+  },
 });
 
 export default PushNotifications;

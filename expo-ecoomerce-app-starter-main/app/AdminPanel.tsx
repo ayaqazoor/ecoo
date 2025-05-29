@@ -3,7 +3,7 @@ import { View, Text, Alert, StyleSheet, ScrollView, TouchableOpacity, Image } fr
 import { checkIfAdmin, addProduct, deleteProduct } from "@/app/utils/adminFunctions";
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Stack } from 'expo-router';
 import { collection, getDocs, query, where, getFirestore, orderBy, updateDoc, doc, Timestamp, getDoc, addDoc } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
@@ -518,6 +518,7 @@ interface ReportsOrder {
 }
 
 const AdminPanel = () => {
+  const { tab } = useLocalSearchParams();
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('products');
@@ -726,6 +727,12 @@ const AdminPanel = () => {
       fetchReportsData();
     }
   }, [isAdmin, activeTab, timeFilter]);
+
+  useEffect(() => {
+    if (tab === 'orders') {
+      setActiveTab('orders');
+    }
+  }, [tab]);
 
   const handleConfirmOrder = async (orderId: string) => {
     try {
@@ -1056,6 +1063,14 @@ const AdminPanel = () => {
               <Ionicons name="arrow-back" size={28} color={Colors.primary} />
             </TouchableOpacity>
           ),
+          headerRight: () => (
+            <TouchableOpacity 
+              style={styles.headerButton}
+              onPress={() => router.push('/cart')}
+            >
+              <Ionicons name="cart-outline" size={28} color={Colors.primary} />
+            </TouchableOpacity>
+          ),
           headerStyle: {
             backgroundColor: Colors.white,
           },
@@ -1065,7 +1080,6 @@ const AdminPanel = () => {
             color: Colors.primary,
           },
           headerShadowVisible: false,
-          headerRight: () => null,
         }}
       />
       <View style={styles.container}>

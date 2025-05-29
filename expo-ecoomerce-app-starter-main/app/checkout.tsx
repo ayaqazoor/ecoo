@@ -4,7 +4,7 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { Colors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
-import { collection, addDoc, query, where, getDocs, doc, getDoc, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { getAuth } from 'firebase/auth';
 
@@ -49,6 +49,7 @@ const sendNotification = async (toToken: string, title: string, body: string, us
   try {
     await addDoc(collection(db, 'notifications'), {
       userId,
+      senderId: getAuth().currentUser?.uid || '',
       title,
       body,
       orderId: orderId || null,
@@ -84,33 +85,6 @@ const sendNotification = async (toToken: string, title: string, body: string, us
   }
 };
 
-// Notify admins on order
-const notifyAdminsOnOrder = async (userName: string, orderDetails: string, orderId: string) => {
-  try {
-    const adminQuery = query(collection(db, 'users'), where('role', '==', 'admin'));
-    const adminDocs = await getDocs(adminQuery);
-    const adminTokens = adminDocs.docs
-      .map((doc) => {
-        const data = doc.data();
-        return { token: data.expoPushToken, userId: data.uid };
-      })
-      .filter((entry): entry is { token: string; userId: string } => !!entry.token && typeof entry.token === 'string');
-
-    console.log('Admin Tokens:', adminTokens);
-
-    if (adminTokens.length === 0) {
-      console.log('No admin tokens found');
-      return;
-    }
-
-    adminTokens.forEach(({ token, userId }) => {
-      sendNotification(token, 'طلبية جديدة', `طلبية من ${userName}: ${orderDetails}`, userId, orderId);
-    });
-  } catch (error) {
-    console.error('Error notifying admins:', error);
-  }
-};
-
 // Function to send user thank-you notification
 const sendUserOrderConfirmation = async (order: Order) => {
   try {
@@ -142,6 +116,7 @@ const sendUserOrderConfirmation = async (order: Order) => {
 
     await addDoc(collection(db, 'notifications'), {
       userId: order.userId,
+      senderId: getAuth().currentUser?.uid || '',
       title: 'شكراً لتسوقك من M&H Store!',
       body: `شكراً لشرائك! طلبيتك: ${itemsSummary}. المجموع: ₪${order.total}`,
       orderId: order.id,
@@ -299,17 +274,8 @@ const CheckoutScreen: React.FC = () => {
       const orderRef = await addDoc(ordersRef, orderData);
       orderData.id = orderRef.id;
 
-      // Create detailed order details for admin notification
-      const orderDetails = `رقم الطلب: ${orderData.id}, العناصر: ${orderItems
-        .map(item => `${item.name} (الكمية: ${item.quantity}, السعر: ₪${item.price})`)
-        .join(', ')}, المجموع: ₪${finalTotal}, العميل: ${formData.fullName}, الهاتف: ${formData.phone}, العنوان: ${formData.address}, ${formData.city}`;
-
       // Send user confirmation notification
       await sendUserOrderConfirmation(orderData);
-
-      // Notify admins
-      await notifyAdminsOnOrder(formData.fullName, orderDetails, orderData.id);
-      console.log('Admins notified:', { customerName: formData.fullName, orderDetails });
 
       Alert.alert(
         'Success',
