@@ -1,10 +1,12 @@
-import { View, Text, StyleSheet, ScrollView, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Platform, Alert, Image } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import * as Notifications from 'expo-notifications';
 import { getAuth } from 'firebase/auth';
-import { doc, setDoc, collection, where, query, orderBy, addDoc, onSnapshot, Timestamp, getDocs, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
+import { doc, setDoc, collection, where, query, orderBy, addDoc, onSnapshot, Timestamp, getDocs, QueryDocumentSnapshot, DocumentData, getDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import Constants from 'expo-constants';
+import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '@/constants/Colors';
 
 // Define a type for in-app notifications
 type InAppNotification = {
@@ -12,6 +14,7 @@ type InAppNotification = {
   title: string;
   body: string;
   timestamp: string;
+  orderId?: string;
 };
 
 // Notification handler for system notifications
@@ -26,6 +29,7 @@ Notifications.setNotificationHandler({
 const PushNotifications = () => {
   const [token, setToken] = useState<string>('');
   const [inAppNotifications, setInAppNotifications] = useState<InAppNotification[]>([]);
+  const [orderDetailsCache, setOrderDetailsCache] = useState<{ [orderId: string]: any }>({});
   const auth = getAuth();
   const user = auth.currentUser;
   const projectId = Constants.expoConfig?.extra?.eas?.projectId;
@@ -35,6 +39,7 @@ const PushNotifications = () => {
     if (!user) {
       console.log('No user logged in');
       setInAppNotifications([]);
+      setOrderDetailsCache({});
       return;
     }
 
@@ -46,27 +51,29 @@ const PushNotifications = () => {
       orderBy('createdAt', 'desc')
     );
 
-    const unsubscribe = onSnapshot(notificationsQuery, (querySnapshot) => {
+    const unsubscribe = onSnapshot(notificationsQuery, async (querySnapshot) => {
       try {
-        const notifications = querySnapshot.docs.map((doc) => {
-          const data = doc.data();
-          console.log('Notification data:', {
-            id: doc.id,
-            userId: data.userId,
-            title: data.title,
-            body: data.body,
-            orderId: data.orderId,
-            createdAt: data.createdAt?.toDate?.()?.toISOString(),
-          });
+        const notifications = await Promise.all(querySnapshot.docs.slice(0, 5).map(async (docSnap) => {
+          const data = docSnap.data();
+          let orderId = data.orderId as string | undefined;
+          if (orderId && !orderDetailsCache[orderId]) {
+            try {
+              const orderDoc = await getDoc(doc(db, 'orders', orderId));
+              if (orderDoc.exists()) {
+                const orderInfo = orderDoc.data();
+                setOrderDetailsCache(prev => ({ ...prev, [orderId]: orderInfo }));
+              }
+            } catch (e) { /* ignore */ }
+          }
           return {
-            id: doc.id,
+            id: docSnap.id,
             title: data.title || 'No Title',
             body: data.body || 'No Body',
             timestamp: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+            orderId: data.orderId,
           };
-        });
-        setInAppNotifications(notifications.slice(0, 5)); // Keep last 5 notifications
-        console.log('In-app notifications updated:', notifications);
+        }));
+        setInAppNotifications(notifications);
       } catch (error) {
         console.error('Error processing onSnapshot data:', error);
       }
@@ -292,6 +299,23 @@ const PushNotifications = () => {
     }
   };
 
+  // Helper to get order details (from cache or Firestore)
+  const getOrderDetails = async (orderId: string) => {
+    if (orderDetailsCache[orderId]) return orderDetailsCache[orderId];
+    try {
+      const orderDoc = await getDoc(doc(db, 'orders', orderId));
+      if (orderDoc.exists()) {
+        const orderData = orderDoc.data();
+        setOrderDetailsCache(prev => ({ ...prev, [orderId]: orderData }));
+        return orderData;
+      }
+    } catch (e) {}
+    return null;
+  };
+
+  // Helper to get doc ref
+  const docRef = (col: string, id: string) => doc(db, col, id);
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>🔔 إشعارات M&H</Text>
@@ -301,15 +325,51 @@ const PushNotifications = () => {
         {inAppNotifications.length === 0 ? (
           <Text style={styles.noNotifications}>لا توجد إشعارات حالياً</Text>
         ) : (
-          inAppNotifications.map((notification) => (
-            <View key={notification.id} style={styles.notificationCard}>
-              <Text style={styles.notificationTitle}>{notification.title}</Text>
-              <Text style={styles.notificationBody}>{notification.body}</Text>
-              <Text style={styles.notificationTimestamp}>
-                {new Date(notification.timestamp).toLocaleString('ar-EG')}
-              </Text>
-            </View>
-          ))
+          inAppNotifications.map((notification) => {
+            let order = notification.orderId && orderDetailsCache[notification.orderId];
+            let userName = '';
+            let total = null;
+            let items: any[] = [];
+            if (order) {
+              userName = order.customerName || order.userName || '';
+              total = order.total;
+              items = order.items || [];
+            }
+            return (
+              <View key={notification.id} style={styles.notificationCard}>
+                {order && (
+                  <Text style={styles.userName}>{userName}</Text>
+                )}
+                <View style={{ flexDirection: 'column', gap: 8 }}>
+                  {order && items.length > 0 ? (
+                    items.map((item, idx) => (
+                      <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                        <Image source={{ uri: item.images && item.images.length > 0 ? item.images[0] : undefined }} style={styles.notificationImage} />
+                        <Text style={[styles.productName, { flex: 1, marginLeft: 8 }]} numberOfLines={1} ellipsizeMode="tail">{item.name || item.title || 'اسم غير متوفر'}</Text>
+                        <Text style={styles.productQty}>x{item.quantity}</Text>
+                      </View>
+                    ))
+                  ) : (
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <View style={styles.notificationImagePlaceholder}>
+                        <Ionicons name="notifications-outline" size={32} color="#ccc" />
+                      </View>
+                      <View style={{ flex: 1, marginLeft: 12 }}>
+                        <Text style={styles.notificationTitle}>{notification.title}</Text>
+                        <Text style={styles.notificationBody}>{notification.body}</Text>
+                      </View>
+                    </View>
+                  )}
+                </View>
+                {order && (
+                  <Text style={styles.orderTotal}>المجموع: ₪{total}</Text>
+                )}
+                <Text style={styles.notificationTimestamp}>
+                  {new Date(notification.timestamp).toLocaleString('ar-EG')}
+                </Text>
+              </View>
+            );
+          })
         )}
       </View>
     </ScrollView>
@@ -373,6 +433,29 @@ const styles = StyleSheet.create({
     color: 'gray',
     textAlign: 'right',
   },
+  notificationImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#eee',
+  },
+  notificationImagePlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#eee',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  productName: {
+    fontSize: 14,
+    color: Colors.primary,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  userName: { fontSize: 15, fontWeight: 'bold', color: Colors.primary, marginBottom: 6, textAlign: 'left' },
+  productQty: { fontSize: 14, color: Colors.gray, marginLeft: 8, minWidth: 32, textAlign: 'right' },
+  orderTotal: { fontSize: 15, color: Colors.primary, fontWeight: 'bold', marginTop: 6, textAlign: 'left' },
 });
 
 export default PushNotifications;
