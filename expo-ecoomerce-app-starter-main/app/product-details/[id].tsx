@@ -8,7 +8,6 @@ import { Colors } from '@/constants/Colors';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from 'expo-router';
 import { useHeaderHeight } from '@react-navigation/elements';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { doc, getDoc, collection, addDoc, updateDoc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { getAuth } from 'firebase/auth';
@@ -23,7 +22,7 @@ const ProductDetails = () => {
 
     useEffect(() => {
         if (id && productType) {
-                getProductDetails();
+            getProductDetails();
             checkIfFavorite();
         }
     }, [id, productType]);
@@ -31,70 +30,39 @@ const ProductDetails = () => {
     const getProductDetails = async () => {
         try {
             setLoading(true);
-            console.log('Fetching product details for:', { id, productType });
-            
-            if (!id) {
-                Alert.alert('Error', 'Product ID is missing');
-                setProduct(null);
-                return;
-            }
-
             const collectionName = productType === "sale" ? "saleProducts" : "products";
             const docRef = doc(db, collectionName, id as string);
             const docSnap = await getDoc(docRef);
-            
+
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                console.log('Raw product data:', data);
-                
-                // Set fixed discount percentage of 15% for sale products
                 const discountPercent = productType === "sale" ? 15 : 0;
-                
-                // Calculate discounted price
                 const originalPrice = Number(data.originalPrice) || Number(data.price) || 0;
                 const discountedPrice = productType === "sale" 
                     ? originalPrice - (originalPrice * (discountPercent / 100))
                     : originalPrice;
-                
-                // Ensure all required fields exist with default values and are strings
+
                 const productData: ProductType = {
                     id: docSnap.id,
                     title: String(data.title || 'No title available'),
-                    price: discountedPrice, // Use discounted price for sale products
+                    price: discountedPrice,
                     description: String(data.description || 'No description available'),
                     images: Array.isArray(data.images) ? data.images.map(String) : [],
-                    category: String(data.category || 'Uncategorized'),
                     discount: discountPercent,
                     originalPrice: originalPrice,
-                    productType: undefined
+                    productType: undefined,
+                    category: ''
                 };
-                
-                console.log('Processed product data:', productData);
+
                 setProduct(productData);
-                
-                // Check if product is in favorites
                 checkIfFavorite();
             } else {
-                console.log("No such document!");
                 Alert.alert('Error', 'Product not found');
                 setProduct(null);
             }
         } catch (error) {
             console.error('Error fetching product details:', error);
-            Alert.alert(
-                'Error',
-                'Failed to load product details. Please try again.',
-                [
-                    {
-                        text: 'Try Again',
-                        onPress: () => getProductDetails()
-                    },
-                    {
-                        text: 'Cancel',
-                        style: 'cancel'
-                    }
-                ]
-            );
+            Alert.alert('Error', 'Failed to load product details. Please try again.');
             setProduct(null);
         } finally {
             setLoading(false);
@@ -140,14 +108,12 @@ const ProductDetails = () => {
         try {
             const auth = getAuth();
             const user = auth.currentUser;
-            
+
             if (!user) {
-                console.log('User not logged in');
                 router.push('/signin');
                 return;
             }
 
-            console.log('Adding product to cart:', product);
             const cartRef = collection(db, 'carts');
             const q = query(cartRef, 
                 where('userId', '==', user.uid), 
@@ -156,7 +122,6 @@ const ProductDetails = () => {
             const querySnapshot = await getDocs(q);
 
             if (querySnapshot.empty) {
-                // Add new item to cart
                 const cartItem = {
                     userId: user.uid,
                     productId: product.id,
@@ -167,15 +132,10 @@ const ProductDetails = () => {
                     createdAt: new Date(),
                     productType: productType
                 };
-                
-                console.log('Adding new cart item:', cartItem);
-                const docRef = await addDoc(cartRef, cartItem);
-                console.log('New cart item added with ID:', docRef.id);
+                await addDoc(cartRef, cartItem);
             } else {
-                // Update existing item quantity
                 const docRef = doc(db, 'carts', querySnapshot.docs[0].id);
                 const currentQuantity = querySnapshot.docs[0].data().quantity;
-                console.log('Updating existing cart item quantity:', currentQuantity + 1);
                 await updateDoc(docRef, {
                     quantity: currentQuantity + 1,
                     updatedAt: new Date()
@@ -240,90 +200,70 @@ const ProductDetails = () => {
                 }} 
             />
             <View style={[styles.container, { marginTop: 0 }]}>
-                {loading ? (
-                    <View style={styles.loadingContainer}>
-                        <ActivityIndicator size="large" color={Colors.primary} />
-                    </View>
-                ) : product && product.id ? (
-                    <ScrollView style={styles.contentContainer}>
-                        {product.images && product.images.length > 0 && (
-                            <ImageSlider imageList={product.images} />
-                        )}
-                        
-                        <View style={styles.detailsContainer}>
-                            <View style={styles.titleContainer}>
-                                <Text style={styles.productTitle}>{String(product.title || 'No title')}</Text>
-                                <TouchableOpacity onPress={toggleFavorite}>
-                                    <Ionicons
-                                        name={isFavorite ? "heart" : "heart-outline"}
-                                        size={24}
-                                        color={isFavorite ? "red" : Colors.black}
-                                    />
-                                </TouchableOpacity>
-                            </View>
+                <ScrollView style={styles.contentContainer}>
+                    {product.images && product.images.length > 0 && (
+                        <ImageSlider imageList={product.images} />
+                    )}
 
-                            <View style={styles.priceContainer}>
-                                {productType === "sale" ? (
-                                    <>
-                                        <Text style={styles.currentPrice}>
-                                            ₪{((product.originalPrice || 0) - ((product.originalPrice || 0) * (product.discount || 0) / 100)).toFixed(2)}
-                                        </Text>
-                                        <Text style={styles.originalPrice}>
-                                            ₪{(product.originalPrice || 0).toFixed(2)}
-                                        </Text>
-                                        <View style={styles.discountBadge}>
-                                            <Text style={styles.discountText}>-{product.discount}%</Text>
-                                        </View>
-                                    </>
-                                ) : (
-                                    <Text style={styles.currentPrice}>
-                                        ₪{(product.price || 0).toFixed(2)}
-                                    </Text>
-                                )}
-                            </View>
-
-                            <View style={styles.discountContainer}>
-                                <Text style={styles.discountTitle}>Discount</Text>
-                                <Text style={styles.discountValue}>
-                                    {productType === "sale" ? `${product.discount}%` : '0%'}
-                                </Text>
-                            </View>
-
-                            <View style={styles.descriptionContainer}>
-                                <Text style={styles.descriptionTitle}>Description</Text>
-                                <Text style={styles.descriptionText}>{String(product.description || 'No description available')}</Text>
-                            </View>
-
-                            <View style={styles.categoryContainer}>
-                                <Text style={styles.categoryTitle}>Category</Text>
-                                <Text style={styles.categoryText}>{String(product.category || 'Uncategorized')}</Text>
-                            </View>
-
-                            <TouchableOpacity
-                                style={styles.addToCartButton}
-                                onPress={addToCart}
-                            >
-                                <Text style={styles.addToCartText}>Add to Cart</Text>
+                    <View style={styles.detailsContainer}>
+                        <View style={styles.titleContainer}>
+                            <Text style={styles.productTitle}>{product.title}</Text>
+                            <TouchableOpacity onPress={toggleFavorite}>
+                                <Ionicons
+                                    name={isFavorite ? "heart" : "heart-outline"}
+                                    size={24}
+                                    color={isFavorite ? "red" : Colors.black}
+                                />
                             </TouchableOpacity>
                         </View>
-                    </ScrollView>
-                ) : (
-                    <View style={styles.errorContainer}>
-                        <Text style={styles.errorText}>Product not found</Text>
+
+                        <View style={styles.priceContainer}>
+                            {productType === "sale" ? (
+                                <>
+                                    <Text style={styles.currentPrice}>
+                                        ₪{((product.originalPrice || 0) - ((product.originalPrice || 0) * (product.discount || 0) / 100)).toFixed(2)}
+                                    </Text>
+                                    <Text style={styles.originalPrice}>
+                                        ₪{(product.originalPrice || 0).toFixed(2)}
+                                    </Text>
+                                    <View style={styles.discountBadge}>
+                                        <Text style={styles.discountText}>-{product.discount}%</Text>
+                                    </View>
+                                </>
+                            ) : (
+                                <Text style={styles.currentPrice}>
+                                    ₪{(product.price || 0).toFixed(2)}
+                                </Text>
+                            )}
+                        </View>
+
+                        <View style={styles.discountContainer}>
+                            <Text style={styles.discountTitle}>Discount</Text>
+                            <Text style={styles.discountValue}>
+                                {productType === "sale" ? `${product.discount}%` : '0%'}
+                            </Text>
+                        </View>
+
+                        <View style={styles.descriptionContainer}>
+                            <Text style={styles.descriptionTitle}>Description</Text>
+                            <Text style={styles.descriptionText}>{product.description}</Text>
+                        </View>
+
                         <TouchableOpacity
-                            style={styles.retryButton}
-                            onPress={getProductDetails}
+                            style={styles.addToCartButton}
+                            onPress={addToCart}
                         >
-                            <Text style={styles.retryText}>Try Again</Text>
+                            <Text style={styles.addToCartText}>Add to Cart</Text>
                         </TouchableOpacity>
                     </View>
-                )}
+                </ScrollView>
             </View>
         </>
     );
 };
 
 const styles = StyleSheet.create({
+    // نفس الـ styles بدون تغييرات لأن category sections انحذفوا بالكامل
     container: {
         flex: 1,
         backgroundColor: Colors.white,
@@ -433,19 +373,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: Colors.gray,
         lineHeight: 24,
-    },
-    categoryContainer: {
-        marginBottom: 20,
-    },
-    categoryTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: Colors.black,
-        marginBottom: 10,
-    },
-    categoryText: {
-        fontSize: 16,
-        color: Colors.gray,
     },
     addToCartButton: {
         backgroundColor: Colors.primary,
