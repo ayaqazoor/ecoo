@@ -218,7 +218,7 @@ const CheckoutScreen: React.FC = () => {
         setIsLoading(false);
         Alert.alert("Error", "Loading took too long. Please try again.");
       }
-    }, 5000); // Reduced to 5 seconds for faster feedback
+    }, 50000); // Reduced to 5 seconds for faster feedback
 
     try {
       // Validate params.items
