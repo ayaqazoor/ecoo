@@ -14,7 +14,7 @@ type Option = {
 
 const options: Option[] = [
   { title: "Manage Account", icon: "user" },
-  { title: "Notifications", icon: "bell" },
+  { title: "My Orders", icon: "shopping-bag" }, // <- أضفت هذا الخيار
   { title: "Our Policies", icon: "file-text" }, // القسم الجديد
   { title: "Logout", icon: "log-out" },
 ];
@@ -64,6 +64,8 @@ const ProfileScreen = () => {
       router.push("/ManageAccountScreen");
     } else if (item.title === "Our Policies") {
       router.push("/OurPoliciesScreen");
+    } else if (item.title === "My Orders") {
+      router.push("/MyOrdersScreen");  // هنا توجه الشاشة لعرض الطلبات
     } else {
       console.log(`Navigating to ${item.title}`);
     }

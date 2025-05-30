@@ -1,26 +1,27 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image } from "react-native";
-import { auth } from "@/config/firebase"; // تأكد من أن Firebase تم تهيئته بشكل صحيح
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image, Alert, ScrollView, KeyboardAvoidingView, Platform } from "react-native";
+import { auth } from "@/config/firebase";
 import { Feather } from "@expo/vector-icons";
 import { Colors } from "@/constants/Colors";
-import * as ImagePicker from 'expo-image-picker'; // استيراد ImagePicker من expo
-import { updateProfile } from "firebase/auth"; // دالة تحديث البيانات في Firebase
+import * as ImagePicker from 'expo-image-picker';
+import { updateProfile, reauthenticateWithCredential, EmailAuthProvider, updatePassword } from "firebase/auth";
 
 const ManageAccountScreen = () => {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [photoURL, setPhotoURL] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
 
   useEffect(() => {
     const user = auth.currentUser;
     if (user) {
       setUsername(user.displayName || "User");
       setEmail(user.email || "");
-      setPhotoURL(user.photoURL || ""); // تعيين صورة الحساب إذا كانت موجودة
+      setPhotoURL(user.photoURL || "");
     }
   }, []);
 
-  // دالة لاختيار صورة من الجهاز
   const handlePickImage = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permissionResult.granted) {
@@ -29,78 +30,130 @@ const ManageAccountScreen = () => {
         quality: 1,
       });
       if (!result.canceled) {
-        setPhotoURL(result.assets[0].uri); // تعيين رابط الصورة باستخدام assets[0].uri
+        setPhotoURL(result.assets[0].uri);
       }
     } else {
       alert("Permission to access gallery is required!");
     }
   };
 
-  // دالة لحفظ التغييرات
   const handleSaveChanges = () => {
     const user = auth.currentUser;
     if (user) {
-      // تحديث البيانات مثل الاسم أو الصورة عبر Firebase
       updateProfile(user, {
         displayName: username,
         photoURL: photoURL,
       })
         .then(() => {
-          alert("Changes saved successfully!");
+          Alert.alert("Success", "Changes saved successfully!");
         })
-        .catch((error: Error) => { // تحديد نوع الـ error هنا
-          alert("Error saving changes: " + error.message);
+        .catch((error: Error) => {
+          Alert.alert("Error saving changes", error.message);
         });
     }
   };
 
+  const handleChangePassword = async () => {
+    const user = auth.currentUser;
+    if (!user || !user.email) {
+      Alert.alert("Error", "User not logged in");
+      return;
+    }
+
+    if (!currentPassword || !newPassword) {
+      Alert.alert("Error", "Please fill both current and new password fields.");
+      return;
+    }
+
+    const credential = EmailAuthProvider.credential(user.email, currentPassword);
+
+    try {
+      await reauthenticateWithCredential(user, credential);
+      await updatePassword(user, newPassword);
+      Alert.alert("Success", "Password has been changed.");
+      setCurrentPassword("");
+      setNewPassword("");
+    } catch (error: any) {
+      Alert.alert("Error", error.message);
+    }
+  };
+
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Image
-          source={{ uri: photoURL || "https://via.placeholder.com/100" }}
-          style={styles.avatar}
-        />
-        <Text style={styles.username}>{username}</Text>
-      </View>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
+    >
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <View style={styles.header}>
+          <Image
+            source={{ uri: photoURL || "https://via.placeholder.com/100" }}
+            style={styles.avatar}
+          />
+          <Text style={styles.username}>{username}</Text>
+        </View>
 
-      {/* تغيير الاسم */}
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>Username</Text>
-        <TextInput
-          style={styles.input}
-          value={username}
-          onChangeText={setUsername}
-        />
-      </View>
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Username</Text>
+          <TextInput
+            style={styles.input}
+            value={username}
+            onChangeText={setUsername}
+          />
+        </View>
 
-      {/* تغيير البريد الإلكتروني */}
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>Email</Text>
-        <TextInput
-          style={styles.input}
-          value={email}
-          editable={false}
-        />
-      </View>
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Email</Text>
+          <TextInput
+            style={styles.input}
+            value={email}
+            editable={false}
+          />
+        </View>
 
-      {/* خيار تغيير الصورة */}
-      <TouchableOpacity style={styles.button} onPress={handlePickImage}>
-        <Feather name="camera" size={22} color={Colors.primary} />
-        <Text style={styles.buttonText}>Change Profile Photo</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={styles.button} onPress={handlePickImage}>
+          <Feather name="camera" size={22} color={Colors.white} />
+          <Text style={styles.buttonText}>Change Profile Photo</Text>
+        </TouchableOpacity>
 
-      {/* زر حفظ التغييرات */}
-      <TouchableOpacity style={styles.button} onPress={handleSaveChanges}>
-        <Text style={styles.buttonText}>Save Changes</Text>
-      </TouchableOpacity>
-    </View>
+        <TouchableOpacity style={styles.button} onPress={handleSaveChanges}>
+          <Text style={styles.buttonText}>Save Changes</Text>
+        </TouchableOpacity>
+
+        <View style={{ marginTop: 30 }}>
+          <Text style={[styles.label, { fontSize: 18, marginBottom: 10 }]}>Change Password</Text>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Current Password</Text>
+            <TextInput
+              style={styles.input}
+              value={currentPassword}
+              onChangeText={setCurrentPassword}
+              secureTextEntry
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>New Password</Text>
+            <TextInput
+              style={styles.input}
+              value={newPassword}
+              onChangeText={setNewPassword}
+              secureTextEntry
+            />
+          </View>
+
+          <TouchableOpacity style={styles.button} onPress={handleChangePassword}>
+            <Text style={styles.buttonText}>Change Password</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     padding: 20,
     backgroundColor: Colors.white,
   },
@@ -143,6 +196,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 8,
     marginVertical: 10,
+    justifyContent: "center",
   },
   buttonText: {
     color: Colors.white,

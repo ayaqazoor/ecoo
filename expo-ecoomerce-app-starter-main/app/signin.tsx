@@ -150,6 +150,14 @@ const SignInScreen = () => {
           <Text style={styles.rememberMeText}>Remember Me</Text>
         </TouchableOpacity>
 
+        {/* زر نسيت كلمة المرور */}
+       <TouchableOpacity onPress={() => router.push("/forgot-password")}>
+       <Text style={{ color: Colors.primary, alignSelf: 'flex-end', marginBottom: 20 }}>
+          Forgot Password?
+          </Text>
+        </TouchableOpacity>
+
+
         {/* زر تسجيل الدخول */}
         <TouchableOpacity 
           style={styles.btn} 
@@ -158,7 +166,7 @@ const SignInScreen = () => {
           <Text style={styles.btnTxt}>Login</Text>
         </TouchableOpacity>
 
-        <OAuth />
+       
 
         {/* رابط إنشاء حساب جديد */}
         <Text style={styles.loginTxt}>

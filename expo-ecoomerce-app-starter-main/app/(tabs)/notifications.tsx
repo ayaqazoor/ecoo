@@ -409,9 +409,9 @@ const PushNotifications = () => {
       <View style={styles.headerLine} />
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.notificationsContainer}>
-          <Text style={styles.sectionTitle}>الإشعارات</Text>
+         
           {inAppNotifications.length === 0 ? (
-            <Text style={styles.noNotifications}>لا توجد إشعارات حالياً</Text>
+            <Text style={styles.noNotifications}>There is no notifications yet! </Text>
           ) : (
             inAppNotifications.map((notification) => {
               let order = notification.orderId && orderDetailsCache[notification.orderId];

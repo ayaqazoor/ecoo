@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: Colors.black,
+    color: Colors.primary,
   },
   headerLine: {
     height: 1,
