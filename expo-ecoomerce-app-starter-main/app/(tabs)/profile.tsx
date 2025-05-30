@@ -1,4 +1,11 @@
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  Image,
+} from "react-native";
 import React, { useState, useEffect } from "react";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { Colors } from "@/constants/Colors";
@@ -14,8 +21,9 @@ type Option = {
 
 const options: Option[] = [
   { title: "Manage Account", icon: "user" },
-  { title: "My Orders", icon: "shopping-bag" }, // <- أضفت هذا الخيار
-  { title: "Our Policies", icon: "file-text" }, // القسم الجديد
+  { title: "My Orders", icon: "shopping-bag" },
+  { title: "Loyalty Program", icon: "star" }, // Added Loyalty Program option
+  { title: "Our Policies", icon: "file-text" },
   { title: "Logout", icon: "log-out" },
 ];
 
@@ -65,7 +73,9 @@ const ProfileScreen = () => {
     } else if (item.title === "Our Policies") {
       router.push("/OurPoliciesScreen");
     } else if (item.title === "My Orders") {
-      router.push("/MyOrdersScreen");  // هنا توجه الشاشة لعرض الطلبات
+      router.push("/MyOrdersScreen");
+    } else if (item.title === "Loyalty Program") {
+      router.push("/LoyaltyProgramScreen"); // Navigate to Loyalty Program screen
     } else {
       console.log(`Navigating to ${item.title}`);
     }
