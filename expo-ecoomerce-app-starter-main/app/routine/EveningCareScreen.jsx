@@ -9,7 +9,7 @@ import {
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { Audio } from 'expo-av';
 
 const EveningCareScreen = () => {
@@ -88,6 +88,7 @@ const EveningCareScreen = () => {
 
   return (
     <View style={styles.container}>
+      <Stack.Screen options={{ headerShown: false }} />
       {/* Header */}
       <View style={[styles.header, { backgroundColor: headerColor }]}>
         <TouchableOpacity onPress={() => router.back()}>
@@ -165,14 +166,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    paddingTop: 40,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    paddingTop: 40,
+    paddingTop: 50,
+    paddingBottom: 20,
   },
   title: {
     color: '#fff',
