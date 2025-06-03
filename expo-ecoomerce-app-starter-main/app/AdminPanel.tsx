@@ -517,6 +517,23 @@ interface ReportsOrder {
   paymentConfirmed: boolean;
 }
 
+interface TopProduct {
+  productId: string;
+  qty: number;
+}
+
+interface DailySale {
+  date: string;
+  total: number;
+}
+
+interface KPIState {
+  conversionRate: number;
+  abandonmentRate: number;
+  topProducts: TopProduct[];
+  dailySales: DailySale[];
+}
+
 const AdminPanel = () => {
   const { tab } = useLocalSearchParams();
   const [isAdmin, setIsAdmin] = useState(false);
@@ -534,9 +551,89 @@ const AdminPanel = () => {
   const [revenue, setRevenue] = useState<number>(0);
   const [soldProducts, setSoldProducts] = useState<number>(0);
   const [lowStockProducts, setLowStockProducts] = useState<Product[]>([]);
+  const [kpi, setKPI] = useState<KPIState>({
+    conversionRate: 0,
+    abandonmentRate: 0,
+    topProducts: [],
+    dailySales: []
+  });
+  const [kpiLoading, setKPILoading] = useState(true);
 
   const db = getFirestore();
   const auth = getAuth();
+
+  const fetchKPIs = async () => {
+    setKPILoading(true);
+    try {
+      // جلب المستخدمين
+      const usersSnap = await getDocs(collection(db, 'users'));
+      const users = usersSnap.docs.map(doc => doc.id);
+
+      // جلب الطلبات
+      const ordersSnap = await getDocs(collection(db, 'orders'));
+      const orders: any[] = ordersSnap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+
+      // جلب السلات
+      const cartsSnap = await getDocs(collection(db, 'carts'));
+      const carts: any[] = cartsSnap.docs.map(doc => doc.data());
+
+      // حساب Conversion Rate
+      const usersWithOrders = new Set(orders.map(o => o.userId));
+      const conversionRate = users.length > 0 ? (usersWithOrders.size / users.length) * 100 : 0;
+
+      // حساب Abandonment Rate
+      const usersWithCarts = new Set(carts.map(c => c.userId));
+      let abandoned = 0;
+      usersWithCarts.forEach(uid => {
+        if (!usersWithOrders.has(uid)) abandoned++;
+      });
+      const abandonmentRate = usersWithCarts.size > 0 ? (abandoned / usersWithCarts.size) * 100 : 0;
+
+      // المنتجات الأكثر مبيعًا
+      const productSales: { [key: string]: number } = {};
+      orders.forEach(order => {
+        if (Array.isArray(order.items)) {
+          order.items.forEach((item: any) => {
+            if (!item.productId) return;
+            if (!productSales[item.productId]) productSales[item.productId] = 0;
+            productSales[item.productId] += Number(item.quantity) || 1;
+          });
+        }
+      });
+      const topProducts = Object.entries(productSales)
+        .sort((a, b) => (b[1] as number) - (a[1] as number))
+        .slice(0, 5)
+        .map(([productId, qty]) => ({ productId, qty: qty as number }));
+
+      // مبيعات يومية
+      const salesByDay: { [key: string]: number } = {};
+      orders.forEach(order => {
+        if (!order.createdAt || !order.total) return;
+        let dateStr = '';
+        if (order.createdAt.toDate) {
+          dateStr = order.createdAt.toDate().toISOString().slice(0, 10);
+        } else if (typeof order.createdAt === 'string') {
+          dateStr = order.createdAt.slice(0, 10);
+        } else if (order.createdAt instanceof Date) {
+          dateStr = order.createdAt.toISOString().slice(0, 10);
+        }
+        if (!salesByDay[dateStr]) salesByDay[dateStr] = 0;
+        salesByDay[dateStr] += Number(order.total);
+      });
+      const dailySales = Object.entries(salesByDay).map(([date, total]) => ({ date, total: total as number }));
+
+      setKPI({
+        conversionRate,
+        abandonmentRate,
+        topProducts,
+        dailySales,
+      });
+    } catch (e) {
+      console.error('Error fetching KPIs:', e);
+    } finally {
+      setKPILoading(false);
+    }
+  };
 
   const fetchStats = async () => {
     try {
@@ -727,6 +824,12 @@ const AdminPanel = () => {
       fetchReportsData();
     }
   }, [isAdmin, activeTab, timeFilter]);
+
+  useEffect(() => {
+    if (isAdmin && activeTab === 'kpi') {
+      fetchKPIs();
+    }
+  }, [isAdmin, activeTab]);
 
   useEffect(() => {
     if (tab === 'orders') {
@@ -975,6 +1078,75 @@ const AdminPanel = () => {
     </View>
   );
 
+  const renderKPIsSection = () => (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>KPIs</Text>
+      </View>
+      {kpiLoading ? (
+        <Text>Loading KPIs...</Text>
+      ) : (
+        <>
+          {/* KPIs Cards */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
+            <View style={[styles.statCard, { flex: 1, marginRight: 8 }]}>
+              <Text style={styles.statNumber}>{kpi.conversionRate.toFixed(1)}%</Text>
+              <Text style={styles.statLabel}>Conversion Rate</Text>
+            </View>
+            <View style={[styles.statCard, { flex: 1, marginLeft: 8 }]}>
+              <Text style={styles.statNumber}>{kpi.abandonmentRate.toFixed(1)}%</Text>
+              <Text style={styles.statLabel}>Abandonment Rate</Text>
+            </View>
+          </View>
+
+          {/* Top Products */}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Top Products</Text>
+          </View>
+          {kpi.topProducts.length === 0 || products.length === 0 ? (
+            <Text style={styles.statLabel}>No sales data yet.</Text>
+          ) : (
+            kpi.topProducts.map((prod, idx) => {
+              const product = products.find(p => p.id === prod.productId);
+              return (
+                <View key={prod.productId} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                  <Image
+                    source={{ uri: product?.images?.[0] || 'https://via.placeholder.com/48x48?text=No+Image' }}
+                    style={{ width: 40, height: 40, borderRadius: 8, marginRight: 10 }}
+                  />
+                  <View>
+                    <Text style={styles.statLabel}>
+                      {idx + 1}. {product?.name || product?.title || product?.productName || prod.productId}
+                    </Text>
+                    <Text style={styles.statLabel}>
+                      Sold: {prod.qty}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })
+          )}
+
+          {/* Daily Sales */}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Daily Sales</Text>
+          </View>
+          {kpi.dailySales.length === 0 ? (
+            <Text style={styles.statLabel}>No sales data yet.</Text>
+          ) : (
+            kpi.dailySales
+              .sort((a, b) => b.date.localeCompare(a.date)) // الأحدث أولاً
+              .map((sale, idx) => (
+                <Text key={sale.date} style={styles.statLabel}>
+                  {sale.date}: ₪{sale.total}
+                </Text>
+              ))
+          )}
+        </>
+      )}
+    </View>
+  );
+
   const renderReportsSection = () => (
     <View style={styles.reportsContainer}>
       <View style={styles.filterContainer}>
@@ -1106,6 +1278,13 @@ const AdminPanel = () => {
             <Text style={[styles.tabText, activeTab === 'stats' && styles.activeTabText]}>Statistics</Text>
           </TouchableOpacity>
           <TouchableOpacity 
+            style={[styles.tab, activeTab === 'kpi' && styles.activeTab]}
+            onPress={() => setActiveTab('kpi')}
+          >
+            <Ionicons name="analytics-outline" size={24} color={activeTab === 'kpi' ? '#fff' : Colors.primary} />
+            <Text style={[styles.tabText, activeTab === 'kpi' && styles.activeTabText]}>KPIs</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
             style={[styles.tab, activeTab === 'reports' && styles.activeTab]}
             onPress={() => setActiveTab('reports')}
           >
@@ -1118,6 +1297,7 @@ const AdminPanel = () => {
           {activeTab === 'products' && renderProductsSection()}
           {activeTab === 'orders' && renderOrdersSection()}
           {activeTab === 'stats' && renderStatsSection()}
+          {activeTab === 'kpi' && renderKPIsSection()}
           {activeTab === 'reports' && renderReportsSection()}
         </ScrollView>
       </View>

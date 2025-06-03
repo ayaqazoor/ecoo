@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, TextInput, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
-import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { router } from 'expo-router';
 
@@ -28,15 +28,15 @@ interface CategoryType {
 
 // Define CATEGORY_MAPPINGS with all 9 categories
 const CATEGORY_MAPPINGS: CategoryType[] = [
-  { id: '5', name: 'Makeup', image: '' },
-  { id: '1', name: 'Body Care', image: '' },
-  { id: '6', name: 'Hair Care', image: '' },
   { id: '2', name: 'Skin Care', image: '' },
-  { id: '4', name: 'Handbags', image: '' },
-  { id: '9', name: 'Gifts', image: '' },
-  { id: '7', name: 'Perfumes', image: '' },
+  { id: '4', name: 'Hand Bags', image: '' },
   { id: '3', name: 'Accessories', image: '' },
+  { id: '7', name: 'Perfumes', image: '' },
+  { id: '1', name: 'Body Care', image: '' },
+  { id: '5', name: 'Makeup', image: '' },
+  { id: '6', name: 'Hair Care', image: '' },
   { id: '8', name: 'Watches', image: '' },
+  { id: '9', name: 'Gift', image: '' },
 ];
 
 const ProductsManagement = () => {
@@ -45,6 +45,13 @@ const ProductsManagement = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [editProductId, setEditProductId] = useState<string | null>(null);
+  const [editPrice, setEditPrice] = useState('');
+  const [editStock, setEditStock] = useState('');
+  const [editDiscount, setEditDiscount] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     fetchProducts();
@@ -148,6 +155,46 @@ const ProductsManagement = () => {
     ]);
   };
 
+  const handleEdit = (product: Product) => {
+    setSelectedProduct(product);
+    setEditPrice(product.price?.toString() || '');
+    setEditStock(product.stock?.toString() || '');
+    setEditDiscount(product.discount?.toString() || '');
+    setIsModalVisible(true);
+  };
+
+  const handleSave = async () => {
+    if (!selectedProduct) return;
+    if (!editPrice || !editStock) {
+      Alert.alert('Error', 'Please fill in price and stock');
+      return;
+    }
+    setSaving(true);
+    try {
+      await updateDoc(doc(db, 'products', selectedProduct.id), {
+        price: parseFloat(editPrice),
+        stock: parseInt(editStock),
+        discount: parseFloat(editDiscount) || 0,
+      });
+      setProducts(products.map(p =>
+        p.id === selectedProduct.id
+          ? { ...p, price: parseFloat(editPrice), stock: parseInt(editStock), discount: parseFloat(editDiscount) || 0 }
+          : p
+      ));
+      setFilteredProducts(filteredProducts.map(p =>
+        p.id === selectedProduct.id
+          ? { ...p, price: parseFloat(editPrice), stock: parseInt(editStock), discount: parseFloat(editDiscount) || 0 }
+          : p
+      ));
+      setIsModalVisible(false);
+      Alert.alert('Success', 'Product updated successfully');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update product');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -214,29 +261,97 @@ const ProductsManagement = () => {
           {filteredProducts.map(product => (
             <View key={product.id} style={styles.productCard}>
               <Image source={{ uri: product.images[0] }} style={styles.productImage} />
-              <View style={styles.productInfo}>
-                <Text style={styles.productName}>{product.title}</Text>
-                <Text style={styles.productPrice}>₪{product.price}</Text>
-                {product.discount ? (
-                  <Text style={styles.productDiscount}>Discount: {product.discount}%</Text>
-                ) : null}
-                <Text style={styles.productDescription}>{product.description}</Text>
-                <Text style={styles.productCategory}>Category: {product.category} (ID: {product.categoryId})</Text>
-                {product.stock !== undefined && (
+              <View style={{ flex: 1, flexDirection: 'column' }}>
+                <View style={styles.productInfo}>
+                  <Text style={styles.productName}>{product.title}</Text>
+                  <Text style={styles.productDescription}>Price: ₪{product.price}</Text>
                   <Text style={styles.productStock}>Stock: {product.stock}</Text>
-                )}
+                  <Text style={styles.productStock}>Discount: {product.discount || 0}%</Text>
+                </View>
               </View>
-              <TouchableOpacity
-                onPress={() => handleDeleteProduct(product.id)}
-                style={styles.deleteButton}
-              >
-                <Ionicons name="trash" size={20} color="#fff" />
-                <Text style={styles.deleteButtonText}>Delete</Text>
-              </TouchableOpacity>
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity
+                  onPress={() => handleEdit(product)}
+                  style={styles.editButton}
+                >
+                  <Ionicons name="pencil" size={20} color="#fff" />
+                  <Text style={styles.editButtonText}>Edit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleDeleteProduct(product.id)}
+                  style={[styles.deleteButton, { marginTop: 8 }]}
+                >
+                  <Ionicons name="trash" size={20} color="#fff" />
+                  <Text style={styles.deleteButtonText}>Delete</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ))}
         </ScrollView>
       )}
+
+      <Modal
+        visible={isModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Edit Product</Text>
+            {selectedProduct && (
+              <>
+                <Text style={styles.productName}>{selectedProduct.title}</Text>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Price:</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    value={editPrice}
+                    onChangeText={setEditPrice}
+                    placeholder="Enter price"
+                    keyboardType="numeric"
+                  />
+                </View>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Stock:</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    value={editStock}
+                    onChangeText={setEditStock}
+                    placeholder="Enter stock"
+                    keyboardType="numeric"
+                  />
+                </View>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Discount (%):</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    value={editDiscount}
+                    onChangeText={setEditDiscount}
+                    placeholder="Enter discount"
+                    keyboardType="numeric"
+                  />
+                </View>
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.saveButton]}
+                    onPress={handleSave}
+                    disabled={saving}
+                  >
+                    <Text style={styles.buttonText}>{saving ? 'Saving...' : 'Save'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.cancelButton]}
+                    onPress={() => setIsModalVisible(false)}
+                  >
+                    <Text style={styles.buttonText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -337,7 +452,6 @@ const styles = StyleSheet.create({
   productName: {
     fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: 5,
   },
   productPrice: {
     fontSize: 14,
@@ -364,13 +478,32 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 5,
   },
+  buttonContainer: {
+    flexDirection: 'column',
+    gap: 8,
+    minWidth: 100,
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primary,
+    padding: 8,
+    borderRadius: 8,
+    justifyContent: 'center',
+  },
+  editButtonText: {
+    color: '#fff',
+    marginLeft: 5,
+    fontSize: 14,
+    fontWeight: '600',
+  },
   deleteButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ff4444',
     padding: 8,
     borderRadius: 8,
-    marginLeft: 10,
+    justifyContent: 'center',
   },
   deleteButtonText: {
     color: '#fff',
@@ -394,6 +527,75 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#ff4444',
     textAlign: 'center',
+  },
+  editInput: {
+    width: 70,
+    height: 35,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    fontSize: 14,
+    backgroundColor: '#f9f9f9',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 20,
+    width: '80%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.primary,
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  inputContainer: {
+    marginBottom: 15,
+  },
+  inputLabel: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 5,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 6,
+    padding: 10,
+    fontSize: 16,
+    backgroundColor: '#f9f9f9',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+  },
+  modalButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 6,
+    marginHorizontal: 5,
+  },
+  saveButton: {
+    backgroundColor: Colors.primary,
+  },
+  cancelButton: {
+    backgroundColor: '#ff4444',
+  },
+  buttonText: {
+    color: 'white',
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

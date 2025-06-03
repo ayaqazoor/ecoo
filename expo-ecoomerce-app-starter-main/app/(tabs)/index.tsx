@@ -1,3 +1,4 @@
+
 import { StyleSheet, Text, View, FlatList, Image, ActivityIndicator, TouchableOpacity, TextInput } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import { router, Stack } from 'expo-router';
@@ -37,6 +38,7 @@ const HomeScreen = (props: Props) => {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [maxPrice, setMaxPrice] = useState(1000);
+  const [currentCard, setCurrentCard] = useState<'faceRecognition' | 'dailyRoutine'>('faceRecognition');
 
   // Fetch data on component mount
   useEffect(() => {
@@ -74,6 +76,15 @@ const HomeScreen = (props: Props) => {
       console.log('Handbags Products (categoryId: 4):', handbagsProducts.map(p => ({ id: p.id, title: p.title })));
     }
   }, [selectedCategoryId, products, saleProducts, flashSaleProducts]);
+
+  // Auto-switch between Face Recognition and Daily Routine every 6 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentCard(prev => prev === 'faceRecognition' ? 'dailyRoutine' : 'faceRecognition');
+    }, 6000);
+
+    return () => clearInterval(interval); // Cleanup interval on unmount
+  }, []);
 
   // Fetch all data from Firebase
   const fetchData = async () => {
@@ -180,7 +191,7 @@ const HomeScreen = (props: Props) => {
       setSaleProducts(saleProductsData);
       console.log('📊 Sale Product Category IDs:', saleProductsData.map(p => ({ id: p.id, categoryId: p.categoryId })));
     } catch (error) {
-      console.error('Error in getSale personallySaleProducts:', error);
+      console.error('Error in getSaleProducts:', error);
     }
   };
 
@@ -419,16 +430,14 @@ const HomeScreen = (props: Props) => {
           </View>
         )}
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-        >
+        <ScrollView showsVerticalScrollIndicator={false}>
           {isSearching || showFilters ? (
             <View style={styles.sectionContainer}>
               {products.length === 0 && saleProducts.length === 0 && flashSaleProducts.length === 0 ? (
                 <Text style={styles.noProductsText}>
                   No products available. Please add products to the Firebase "products" or "saleProducts" collections.
                 </Text>
-              ) : filteredProducts.length === 0 && filteredSaleProducts.length === 0 && filteredFlashSaleProducts.length == 0 ? (
+              ) : filteredProducts.length === 0 && filteredSaleProducts.length === 0 && filteredFlashSaleProducts.length === 0 ? (
                 <Text style={styles.noProductsText}>
                   No products found for this category. Ensure product category IDs match categories defined.
                 </Text>
@@ -471,34 +480,66 @@ const HomeScreen = (props: Props) => {
 
               <View style={styles.sectionContainer}>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Daily Routine</Text>
-                  <TouchableOpacity onPress={() => router.push('../routine/TasksScreen')}>
-                    <Text style={styles.seeAllText}>See All</Text>
+                  <Text style={styles.sectionTitle}>
+                    {currentCard === 'faceRecognition' ? 'Face Recognition' : 'Daily Routine'}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => router.push(currentCard === 'faceRecognition' ? '/faceRecognition' : '../routine/TasksScreen')}
+                  >
+                    <Text style={styles.seeAllText}>
+                      {currentCard === 'faceRecognition' ? 'Try Now' : 'See All'}
+                    </Text>
                   </TouchableOpacity>
                 </View>
-                <TouchableOpacity
-                  style={[styles.routineCard, { backgroundColor: Colors.lightbeige }]}
-                  onPress={() => router.push('../routine/TasksScreen')}
-                >
-                  <Image
-                    source={require('@/assets/images/routine.jpeg')}
-                    style={styles.routineImage}
-                    resizeMode="cover"
-                  />
-                  <View style={styles.routineContent}>
-                    <Text style={styles.routineTitle}>Your Daily Skin Care</Text>
-                    <Text style={styles.routineDescription}>
-                      Follow our expert tips for healthy and glowing skin
-                    </Text>
-                    <View style={styles.routineFooter}>
-                      <View style={[styles.routineBadge, { backgroundColor: Colors.primary }]}>
-                        <Ionicons name="time-outline" size={16} color={Colors.white} />
-                        <Text style={[styles.routineBadgeText, { color: Colors.white }]}>Daily</Text>
+                {currentCard === 'faceRecognition' ? (
+                  <TouchableOpacity
+                    style={[styles.routineCard, { backgroundColor: Colors.lightbeige }]}
+                    onPress={() => router.push('/faceRecognition')}
+                  >
+                    <Image
+                      source={require('@/assets/images/t2.jpg')}
+                      style={styles.routineImage}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.routineContent}>
+                      <Text style={styles.routineTitle}>Discover Your Skin Type</Text>
+                      <Text style={styles.routineDescription}>
+                        Get personalized skin care recommendations
+                      </Text>
+                      <View style={styles.routineFooter}>
+                        <View style={[styles.routineBadge, { backgroundColor: Colors.primary }]}>
+                          <Ionicons name="camera-outline" size={16} color={Colors.white} />
+                          <Text style={[styles.routineBadgeText, { color: Colors.white }]}>AI Powered</Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={24} color={Colors.gray} />
                       </View>
-                      <Ionicons name="chevron-forward" size={24} color={Colors.gray} />
                     </View>
-                  </View>
-                </TouchableOpacity>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.routineCard, { backgroundColor: Colors.lightbeige }]}
+                    onPress={() => router.push('../routine/TasksScreen')}
+                  >
+                    <Image
+                      source={require('@/assets/images/routine.jpeg')}
+                      style={styles.routineImage}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.routineContent}>
+                      <Text style={styles.routineTitle}>Your Daily Skin Care</Text>
+                      <Text style={styles.routineDescription}>
+                        Follow our expert tips for healthy and glowing skin
+                      </Text>
+                      <View style={styles.routineFooter}>
+                        <View style={[styles.routineBadge, { backgroundColor: Colors.primary }]}>
+                          <Ionicons name="time-outline" size={16} color={Colors.white} />
+                          <Text style={[styles.routineBadgeText, { color: Colors.white }]}>Daily</Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={24} color={Colors.gray} />
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                )}
               </View>
 
               <View style={styles.sectionContainer}>
@@ -526,7 +567,7 @@ const HomeScreen = (props: Props) => {
             activeOpacity={0.8}
           >
             <Image
-              source={require('../../assets/images/FAQ.jpg')}
+              source={require('../../assets/images/FAQ.jpeg')}
               style={{ width: 50, height: 50 }}
             />
           </TouchableOpacity>
@@ -809,7 +850,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     padding: 5,
     zIndex: 100,
-    
   },
 });
 

@@ -21,7 +21,8 @@ import {
   getDoc,
   Timestamp,
   onSnapshot,
-  setDoc,
+  updateDoc,
+  serverTimestamp,
 } from "firebase/firestore";
 import { db } from "@/config/firebase";
 import { getAuth } from "firebase/auth";
@@ -195,6 +196,22 @@ const sendUserOrderConfirmation = async (order: Order) => {
   }
 };
 
+// Function to update loyalty points
+const updateUserLoyaltyPoints = async (userId: string, usedPoints: number) => {
+  const loyaltyRef = doc(db, "loyalty", userId);
+  const loyaltySnap = await getDoc(loyaltyRef);
+
+  if (loyaltySnap.exists()) {
+    const currentPoints = loyaltySnap.data().points || 0;
+    const newPoints = Math.max(0, currentPoints - usedPoints);
+
+    await updateDoc(loyaltyRef, {
+      points: newPoints,
+      lastUpdated: serverTimestamp(),
+    });
+  }
+};
+
 const CheckoutScreen: React.FC = () => {
   const headerHeight = useHeaderHeight();
   const params = useLocalSearchParams();
@@ -218,10 +235,9 @@ const CheckoutScreen: React.FC = () => {
         setIsLoading(false);
         Alert.alert("Error", "Loading took too long. Please try again.");
       }
-    }, 50000); // Reduced to 5 seconds for faster feedback
+    }, 5000);
 
     try {
-      // Validate params.items
       if (!params.items) {
         console.warn("No items provided in params");
         setIsLoading(false);
@@ -238,7 +254,6 @@ const CheckoutScreen: React.FC = () => {
         return;
       }
 
-      // Parse cart items
       console.log("Parsing items:", params.items);
       try {
         const parsedItems = JSON.parse(params.items);
@@ -270,7 +285,6 @@ const CheckoutScreen: React.FC = () => {
         return;
       }
 
-      // Check authentication
       const auth = getAuth();
       const user = auth.currentUser;
       if (!user) {
@@ -282,7 +296,6 @@ const CheckoutScreen: React.FC = () => {
         return;
       }
 
-      // Fetch loyalty points
       console.log("Fetching loyalty points for user:", user.uid);
       const loyaltyDocRef = doc(db, "loyalty", user.uid);
       const unsubscribe = onSnapshot(
@@ -422,17 +435,15 @@ const CheckoutScreen: React.FC = () => {
       orderData.id = orderRef.id;
 
       if (usePoints && pointsToUse > 0) {
-        const loyaltyDocRef = doc(db, "loyalty", user.uid);
-        await setDoc(
-          loyaltyDocRef,
-          {
-            userId: user.uid,
-            points: loyaltyPoints - pointsToUse,
-            lastUpdated: new Date().toISOString(),
-          },
-          { merge: true }
-        );
-        console.log(`Deducted ${pointsToUse} points for user ${user.uid}`);
+        try {
+          await updateUserLoyaltyPoints(user.uid, pointsToUse);
+          console.log(`Deducted ${pointsToUse} points for user ${user.uid}`);
+          setLoyaltyPoints((prev) => Math.max(0, prev - pointsToUse));
+        } catch (error: any) {
+          console.error("Error updating loyalty points:", error);
+          Alert.alert("Error", "Failed to update loyalty points: " + error.message);
+          return;
+        }
       }
 
       await sendUserOrderConfirmation(orderData);
@@ -652,22 +663,16 @@ const CheckoutScreen: React.FC = () => {
                   />
                 </View>
                 <View style={styles.row}>
-                  <View
-                    style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}
-                  >
+                  <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
                     <Text style={styles.label}>Expiry Date</Text>
                     <TextInput
                       style={styles.input}
                       value={formData.expiryDate}
-                      onChangeText={(text) =>
-                        handleInputChange("expiryDate", text)
-                      }
+                      onChangeText={(text) => handleInputChange("expiryDate", text)}
                       placeholder="MM/YY"
                     />
                   </View>
-                  <View
-                    style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}
-                  >
+                  <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
                     <Text style={styles.label}>CVV</Text>
                     <TextInput
                       style={styles.input}
