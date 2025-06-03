@@ -746,6 +746,8 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 30,
+    marginLeft: 20,  // غير القيمة حسب المسافة اللي تبغاها
+
   },
   routineContent: {
     flex: 1,
