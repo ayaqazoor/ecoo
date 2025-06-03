@@ -568,7 +568,7 @@ const HomeScreen = (props: Props) => {
           >
             <Image
               source={require('../../assets/images/FAQ.jpeg')}
-              style={{ width: 50, height: 50 }}
+              style={{ width: 50, height: 50 , borderRadius: 30}}
             />
           </TouchableOpacity>
         </View>
