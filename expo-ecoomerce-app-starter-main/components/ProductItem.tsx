@@ -64,13 +64,26 @@ const ProductItem = ({ item, index, productType}: Props) => {
         
             <TouchableOpacity>
                 <Animated.View 
-                    style={styles.Container} 
+                    style={[
+                        styles.Container,
+                        item.stock === 0 && styles.outOfStockProduct
+                    ]} 
                     entering={FadeInDown.delay(300 + index * 100).duration(500)}
                 >
                     <Image
                         source={{ uri: item.images?.[0] || 'https://via.placeholder.com/200' }} 
-                        style={styles.productImg} 
+                        style={[
+                            styles.productImg,
+                            item.stock === 0 && styles.outOfStockImage
+                        ]} 
                     />
+
+                    {/* Out of Stock Label */}
+                    {item.stock === 0 && (
+                        <View style={[styles.outOfStockContainer, { opacity: 1 }]}>
+                            <Text style={[styles.outOfStockText, { opacity: 1 }]}>Out of Stock</Text>
+                        </View>
+                    )}
 
                     {/* ✅ زر المفضلة */}
                     <TouchableOpacity style={styles.bookmarkBtn} onPress={toggleFavorite}>
@@ -140,5 +153,26 @@ const styles = StyleSheet.create({
     rating: {
         fontSize: 14,
         color: Colors.gray,
+    },
+    outOfStockContainer: {
+        position: 'absolute',
+        top: 10,
+        left: 10,
+        backgroundColor: 'rgba(255, 0, 0, 0.9)',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 5,
+        zIndex: 2,
+    },
+    outOfStockText: {
+        color: Colors.white,
+        fontWeight: 'bold',
+        fontSize: 12,
+    },
+    outOfStockProduct: {
+        opacity: 0.6,
+    },
+    outOfStockImage: {
+        opacity: 0.6,
     },
 });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, Alert, StyleSheet, ScrollView, TouchableOpacity, Image } from "react-native";
+import { View, Text, Alert, StyleSheet, ScrollView, TouchableOpacity, Image, Share } from "react-native";
 import { checkIfAdmin, addProduct, deleteProduct } from "@/app/utils/adminFunctions";
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
@@ -7,6 +7,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Stack } from 'expo-router';
 import { collection, getDocs, query, where, getFirestore, orderBy, updateDoc, doc, Timestamp, getDoc, addDoc } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
+import RNPrint from 'react-native-print';
 
 // Utility function to send notification
 const sendNotification = async (toToken: string, title: string, body: string, userId: string, orderId?: string) => {
@@ -98,45 +99,58 @@ const styles = StyleSheet.create({
   tabs: {
     flexDirection: 'row',
     backgroundColor: '#fff',
-    padding: 10,
+    padding: 6,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1,
   },
   tab: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 10,
-    borderRadius: 8,
+    padding: 6,
+    borderRadius: 4,
+    marginRight: 6,
+    minWidth: 100,
+    height: 36,
   },
   activeTab: {
     backgroundColor: Colors.primary,
   },
   tabText: {
-    marginLeft: 8,
-    fontSize: 14,
+    marginLeft: 4,
+    fontSize: 13,
+    fontWeight: '500',
     color: Colors.primary,
   },
   activeTabText: {
     color: '#fff',
+    fontWeight: '600',
   },
   content: {
     flex: 1,
-    padding: 20,
+    padding: 15,
+    marginTop: 48, // ارتفاع التبويبات + padding
   },
   section: {
-    marginBottom: 20,
+    marginBottom: 15,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 15,
+    padding: 15,
+    backgroundColor: Colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.extraLightGray,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: 'bold',
     color: Colors.primary,
   },
   addButton: {
@@ -386,16 +400,19 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.lightbeige,
     padding: 10,
     borderRadius: 20,
-    backgroundColor: Colors.lightbeige,
+    gap: 5,
   },
   activeFilter: {
     backgroundColor: Colors.primary,
   },
   filterText: {
     color: Colors.black,
-    textAlign: 'left',
+    fontSize: 14,
   },
   reportsStatsContainer: {
     flexDirection: 'row',
@@ -915,8 +932,74 @@ const AdminPanel = () => {
     }
   };
 
+  const handlePrintReports = async () => {
+    try {
+      const lowStockText = lowStockProducts
+        .map((product, index) => {
+          const productName = product.name || product.title || product.productName || 'Unnamed Product';
+          return `${index + 1}. ${productName} - Stock: ${product.stock}`;
+        })
+        .join('\n');
+
+      const reportText = `
+تقرير المبيعات
+تاريخ التقرير: ${new Date().toLocaleDateString('ar-SA')}
+الإيرادات: ${formatCurrency(revenue)}
+المنتجات المباعة: ${soldProducts}
+المنتجات ذات المخزون المنخفض:
+${lowStockText || 'لا توجد منتجات ذات مخزون منخفض'}
+      `;
+
+      await Share.share({
+        message: reportText,
+        title: 'تقرير المبيعات'
+      });
+    } catch (error) {
+      console.error('Error generating report:', error);
+      Alert.alert('خطأ', 'فشل في إنشاء التقرير');
+    }
+  };
+
+  const handlePrintKPIs = async () => {
+    try {
+      const topProductsText = kpi.topProducts
+        .map((prod, idx) => {
+          const product = products.find(p => p.id === prod.productId);
+          const productName = product?.name || product?.title || product?.productName || prod.productId;
+          return `${idx + 1}. ${productName} - تم بيع: ${prod.qty}`;
+        })
+        .join('\n');
+
+      const dailySalesText = kpi.dailySales
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .map(sale => `${sale.date}: ${formatCurrency(sale.total)}`)
+        .join('\n');
+
+      const kpiText = `
+تقرير مؤشرات الأداء
+تاريخ التقرير: ${new Date().toLocaleDateString('ar-SA')}
+معدل التحويل: ${kpi.conversionRate.toFixed(1)}%
+معدل التخلي: ${kpi.abandonmentRate.toFixed(1)}%
+
+المنتجات الأكثر مبيعاً:
+${topProductsText || 'لا توجد بيانات مبيعات بعد.'}
+
+المبيعات اليومية:
+${dailySalesText || 'لا توجد بيانات مبيعات بعد.'}
+      `;
+
+      await Share.share({
+        message: kpiText,
+        title: 'تقرير مؤشرات الأداء'
+      });
+    } catch (error) {
+      console.error('Error generating KPI report:', error);
+      Alert.alert('خطأ', 'فشل في إنشاء تقرير مؤشرات الأداء');
+    }
+  };
+
   const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('he-IL', {
+    return new Intl.NumberFormat('ar-SA', {
       style: 'currency',
       currency: 'ILS'
     }).format(amount);
@@ -1082,6 +1165,13 @@ const AdminPanel = () => {
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>KPIs</Text>
+        <TouchableOpacity
+          style={styles.filterButton}
+          onPress={handlePrintKPIs}
+        >
+          <Ionicons name="print-outline" size={24} color={Colors.black} />
+          <Text style={styles.filterText}>Print</Text>
+        </TouchableOpacity>
       </View>
       {kpiLoading ? (
         <Text>Loading KPIs...</Text>
@@ -1167,6 +1257,13 @@ const AdminPanel = () => {
           onPress={() => setTimeFilter('year')}
         >
           <Text style={styles.filterText}>This Year</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.filterButton}
+          onPress={handlePrintReports}
+        >
+          <Ionicons name="print-outline" size={24} color={Colors.black} />
+          <Text style={styles.filterText}>Print</Text>
         </TouchableOpacity>
       </View>
 
@@ -1255,20 +1352,24 @@ const AdminPanel = () => {
         }}
       />
       <View style={styles.container}>
-        <View style={styles.tabs}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          style={styles.tabs}
+        >
           <TouchableOpacity 
             style={[styles.tab, activeTab === 'products' && styles.activeTab]}
             onPress={() => setActiveTab('products')}
           >
             <Ionicons name="cube-outline" size={24} color={activeTab === 'products' ? '#fff' : Colors.primary} />
-            <Text style={[styles.tabText, activeTab === 'products' && styles.activeTabText]}>Products</Text>
+            <Text style={[styles.tabText, activeTab === 'products' && styles.activeTabText]}>Products Management</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             style={[styles.tab, activeTab === 'orders' && styles.activeTab]}
             onPress={() => setActiveTab('orders')}
           >
             <Ionicons name="cart-outline" size={24} color={activeTab === 'orders' ? '#fff' : Colors.primary} />
-            <Text style={[styles.tabText, activeTab === 'orders' && styles.activeTabText]}>Orders</Text>
+            <Text style={[styles.tabText, activeTab === 'orders' && styles.activeTabText]}>Orders Management</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             style={[styles.tab, activeTab === 'stats' && styles.activeTab]}
@@ -1291,9 +1392,12 @@ const AdminPanel = () => {
             <Ionicons name="bar-chart" size={24} color={activeTab === 'reports' ? '#fff' : Colors.primary} />
             <Text style={[styles.tabText, activeTab === 'reports' && styles.activeTabText]}>Reports</Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
 
-        <ScrollView style={styles.content}>
+        <ScrollView 
+          style={styles.content}
+          contentContainerStyle={{ paddingTop: 0 }}
+        >
           {activeTab === 'products' && renderProductsSection()}
           {activeTab === 'orders' && renderOrdersSection()}
           {activeTab === 'stats' && renderStatsSection()}

@@ -9,6 +9,7 @@ export interface ProductType {
   categoryId?: string; // جعلها اختيارية بإضافة ?
   discount: number;
   originalPrice: number;
+  stock?: number; // Add stock property as optional
 }
 
 interface Category {

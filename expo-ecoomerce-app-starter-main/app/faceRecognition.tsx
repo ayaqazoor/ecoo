@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, TouchableOpacity, Image, ActivityIndicator, ScrollView } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Image, ActivityIndicator, ScrollView, Alert } from 'react-native';
 import React, { useEffect, useState, useRef } from 'react';
 import { router, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -50,6 +50,15 @@ const FaceRecognitionScreen = () => {
 
   // State for manually recommended product
   const [recommendedProducts, setRecommendedProducts] = useState<RecommendedProductType[]>([]);
+
+  // Add alert when component mounts
+  useEffect(() => {
+    Alert.alert(
+      "✨ Important Notice! ✨",
+      "📸 Clear photo?\n💡 Good lighting?\n👤 Face centered?",
+      [{ text: "Got it!", style: "default" }]
+    );
+  }, []);
 
   // Load the model and initialize TF.js on component mount
   useEffect(() => {
