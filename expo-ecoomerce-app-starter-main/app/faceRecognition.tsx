@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, TouchableOpacity, Image, ActivityIndicator, ScrollView, Alert } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Image, ActivityIndicator, ScrollView } from 'react-native';
 import React, { useEffect, useState, useRef } from 'react';
 import { router, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,7 +19,7 @@ import * as ImagePicker from 'expo-image-picker';
 // Import FileSystem from expo for reading image file
 import * as FileSystem from 'expo-file-system';
 // Import Camera
-import { useCameraPermissions } from 'expo-camera';
+import { Camera } from 'expo-camera';
 
 // We might need expo-camera later if user wants to use camera
 // import * as Camera from 'expo-camera';
@@ -46,19 +46,10 @@ const FaceRecognitionScreen = () => {
   // Update prediction state to hold an array of results or a string for status
   const [prediction, setPrediction] = useState<PredictionResult[] | string | null>(null);
   const [isLoading, setIsLoading] = useState(true); // Loading for model + analysis
-  const [permission, requestPermission] = useCameraPermissions();
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
 
   // State for manually recommended product
   const [recommendedProducts, setRecommendedProducts] = useState<RecommendedProductType[]>([]);
-
-  // Add alert when component mounts
-  useEffect(() => {
-    Alert.alert(
-      "✨ Important Notice! ✨",
-      "📸 Clear photo?\n💡 Good lighting?\n👤 Face centered?",
-      [{ text: "Got it!", style: "default" }]
-    );
-  }, []);
 
   // Load the model and initialize TF.js on component mount
   useEffect(() => {
@@ -67,25 +58,58 @@ const FaceRecognitionScreen = () => {
       try {
         // Initialize TensorFlow.js React Native backend
         await tf.ready();
-        await tf.setBackend('rn-webgl'); // Explicitly set the backend
-        console.log('TensorFlow.js React Native backend initialized.');
+        console.log('TensorFlow.js ready');
+        
+        // Try to set the backend, but don't fail if it doesn't work
+        try {
+          await tf.setBackend('rn-webgl');
+          console.log('Using rn-webgl backend');
+        } catch (backendError) {
+          console.log('Falling back to default backend:', backendError);
+        }
 
         // For cloud hosted model:
-        const modelJson = 'https://teachablemachine.withgoogle.com/models/DRVbYCgyv/model.json';
+        const modelJson = 'https://storage.googleapis.com/tm-model/DRVbYCgyv/model.json';
+        console.log('Loading model from:', modelJson);
+        
         const loadedModel = await tf.loadLayersModel(modelJson);
+        console.log('Model loaded successfully');
+        
+        // Verify the model is loaded correctly
+        if (!loadedModel) {
+          throw new Error('Model loaded but is null');
+        }
+        
         setModel(loadedModel);
         setModelLoaded(true);
-        console.log('TensorFlow.js model loaded successfully');
       } catch (error) {
         console.error('Error loading TensorFlow.js model:', error);
-        setModelLoaded(false); // Ensure modelLoaded is false on error
-        setPrediction('Failed to load model.'); // Set error status
+        setModelLoaded(false);
+        setPrediction('Failed to load model. Please check your internet connection and try again.');
       } finally {
         setIsLoading(false);
       }
     };
 
     loadModel();
+  }, []);
+
+  // Request camera permissions with better error handling
+  useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await Camera.requestCameraPermissionsAsync();
+        console.log('Camera permission status:', status);
+        setHasPermission(status === 'granted');
+        
+        if (status !== 'granted') {
+          console.log('Camera permission not granted');
+        }
+      } catch (error) {
+        console.error('Error requesting camera permission:', error);
+        setHasPermission(false);
+      }
+    })();
   }, []);
 
   // Function to scroll to results
@@ -132,12 +156,9 @@ const FaceRecognitionScreen = () => {
       return;
     }
 
-    if (!permission?.granted) {
-      const newPermission = await requestPermission();
-      if (!newPermission.granted) {
-        alert('Camera permission is required to take photos');
-        return;
-      }
+    if (!hasPermission) {
+      alert('Camera permission is required to take photos');
+      return;
     }
 
     setPrediction(null);
@@ -173,117 +194,111 @@ const FaceRecognitionScreen = () => {
   const analyzeImage = async (uri: string) => {
     if (!model || !modelLoaded) {
       console.log('Model not available for analysis.');
-      setPrediction('Error: Model not loaded.');
-      setRecommendedProducts([]); // Clear recommendations
+      setPrediction('Error: Model not loaded. Please wait for the model to load or try again.');
+      setRecommendedProducts([]);
       return;
     }
 
-    setIsLoading(true); // Start loading for analysis
+    setIsLoading(true);
     setPrediction('Analyzing...');
-    setRecommendedProducts([]); // Clear previous recommendations
+    setRecommendedProducts([]);
 
     try {
-      // Read the image file as base64
+      console.log('Reading image file...');
       const imgB64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+      console.log('Image read successfully');
+
       const imgBuffer = tf.util.encodeString(imgB64, 'base64').buffer;
+      console.log('Image encoded to buffer');
 
       // Decode the image buffer into a tensor
       const imageTensor = decodeJpeg(new Uint8Array(imgBuffer));
+      console.log('Image decoded to tensor');
 
-      // Resize the image tensor to match the model input size (e.g., [1, 224, 224, 3])
-      // You need to know the input shape of your Teachable Machine model
-      // Teachable Machine image models typically expect a shape like [1, height, width, 3]
-      // Let's assume your model expects 224x224 pixels for now. Adjust if needed.
+      // Resize the image tensor to match the model input size
       const resizedTensor = tf.image.resizeBilinear(imageTensor, [224, 224]);
-      const batchedTensor = resizedTensor.expandDims(0); // Add batch dimension
+      console.log('Image resized to 224x224');
 
-      // Normalize the pixel values if your model expects normalized input (e.g., 0-1 or -1 to 1)
-      // Teachable Machine models usually expect normalized input.
-      // Check your model training process for exact normalization steps.
-      // Example normalization (0 to 1):
+      const batchedTensor = resizedTensor.expandDims(0);
+      console.log('Image batched');
+
+      // Normalize the pixel values
       const normalizedTensor = batchedTensor.div(255.0);
+      console.log('Image normalized');
 
       // Run the prediction
+      console.log('Running prediction...');
       const predictions = model.predict(normalizedTensor) as tf.Tensor;
-      const values = await predictions.data(); // Get the probabilities for all classes
+      const values = await predictions.data();
+      console.log('Prediction values:', values);
 
-      // Get the class names in the correct order as per your Teachable Machine model output
-      // Based on the screenshot, the order seems to be:
-      const classNames = ['Oily', 'Dry', 'Combination', 'Sensitive', 'Normal']; // CONFIRM THIS ORDER
+      // Get the class names
+      const classNames = ['Oily', 'Dry', 'Combination', 'Sensitive', 'Normal'];
 
-      // Create an array of prediction results with class names and confidence scores
+      // Create an array of prediction results
       const results: PredictionResult[] = classNames.map((className, index) => {
-        // Ensure the index is within the bounds of the values array
         const confidenceValue = (values.length > index && typeof values[index] === 'number') ? values[index] : 0;
         return {
           className: className,
-          confidence: confidenceValue * 100, // Multiply by 100 to get percentage
+          confidence: confidenceValue * 100,
         };
       });
 
-      // Sort results by confidence in descending order (optional, but often useful)
+      // Sort results by confidence
       results.sort((a, b) => b.confidence - a.confidence);
+      console.log('Sorted results:', results);
 
-      setPrediction(results); // Set the prediction state with the results array
+      setPrediction(results);
 
-      // --- Handle Skin Type Prediction and Fetch Products by Skin Type ---
+      // Handle skin type prediction and fetch products
       if (results.length > 0) {
         const topPrediction = results[0];
-        const skinType = topPrediction.className.toLowerCase(); // Convert to lowercase to match Firebase value
+        const skinType = topPrediction.className.toLowerCase();
+        console.log('Top prediction:', skinType);
 
         // Fetch products by skinType
         const fetchProductsBySkinType = async (type: string) => {
-            try {
-                const productsRef = collection(db, 'products');
-                const q = query(productsRef, where('skinType', '==', type));
-                const querySnapshot = await getDocs(q);
+          try {
+            console.log('Fetching products for skin type:', type);
+            const productsRef = collection(db, 'products');
+            const q = query(productsRef, where('skinType', '==', type));
+            const querySnapshot = await getDocs(q);
 
-                if (!querySnapshot.empty) {
-                    const products: RecommendedProductType[] = querySnapshot.docs.map(doc => {
-                        const productData = doc.data();
-                         return {
-                            id: doc.id, // Use Firestore Document ID
-                            title: String(productData.title || ''),
-                            category: String(productData.category?.name || 'Unknown'),
-                            images: Array.isArray(productData.images) ? productData.images.map(String) : [], // Include images, ensure they are strings
-                         };
-                    });
-                    console.log(`Fetched ${products.length} recommended products for skin type: ${type}`, products); // Debugging log
-                    return products; // Return the array of products
-                } else {
-                    console.log('❌ No products found in Firebase for skinType:', type);
-                    return []; // Return empty array if no products found
-                }
-            } catch (error) {
-                 console.error('🔥 Error fetching products by skinType:', error); // Updated log message
-                 return [];
+            if (!querySnapshot.empty) {
+              const products: RecommendedProductType[] = querySnapshot.docs.map(doc => {
+                const productData = doc.data();
+                return {
+                  id: doc.id,
+                  title: String(productData.title || ''),
+                  category: String(productData.category?.name || 'Unknown'),
+                  images: Array.isArray(productData.images) ? productData.images.map(String) : [],
+                };
+              });
+              console.log(`Found ${products.length} products for skin type: ${type}`);
+              return products;
+            } else {
+              console.log('No products found for skin type:', type);
+              return [];
             }
+          } catch (error) {
+            console.error('Error fetching products:', error);
+            return [];
+          }
         };
 
-        // Call the function to fetch and set the recommended products
-        fetchProductsBySkinType(skinType).then(products => {
-            setRecommendedProducts(products); // Set the state with the array of products
-        });
-
-      } else {
-        console.log('No prediction results to fetch products.'); // Updated log message
-        setRecommendedProducts([]); // Clear if no prediction results
+        const products = await fetchProductsBySkinType(skinType);
+        setRecommendedProducts(products);
       }
-      // --- End Handle Skin Type Prediction ---
 
-      // Clean up tensors to free memory
-      imageTensor.dispose();
-      resizedTensor.dispose();
-      batchedTensor.dispose();
-      normalizedTensor.dispose();
-      predictions.dispose();
+      // Clean up tensors
+      tf.dispose([imageTensor, resizedTensor, batchedTensor, normalizedTensor, predictions]);
 
     } catch (error) {
       console.error('Error analyzing image:', error);
-      setPrediction('Error during analysis.'); // Set error status
-      setRecommendedProducts([]); // Clear recommendations on error
+      setPrediction('Error analyzing image. Please try again with a different image.');
+      setRecommendedProducts([]);
     } finally {
-      setIsLoading(false); // End loading for analysis
+      setIsLoading(false);
     }
   };
 

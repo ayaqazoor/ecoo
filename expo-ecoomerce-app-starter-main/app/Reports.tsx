@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { collection, query, where, getDocs, Timestamp, DocumentData } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { Colors } from '../constants/Colors';
 
@@ -13,12 +12,6 @@ interface Product {
 
 interface OrderItem {
   quantity: number;
-}
-
-interface Order {
-  totalAmount: number;
-  items: OrderItem[];
-  createdAt: Timestamp;
 }
 
 const Reports = () => {
@@ -33,10 +26,9 @@ const Reports = () => {
 
   const fetchReportData = async () => {
     try {
-      // حساب الإيرادات والمنتجات المباعة
       const ordersRef = collection(db, 'orders');
       let startDate = new Date();
-      
+
       switch (timeFilter) {
         case 'today':
           startDate.setHours(0, 0, 0, 0);
@@ -53,10 +45,10 @@ const Reports = () => {
 
       const q = query(ordersRef, where('createdAt', '>=', Timestamp.fromDate(startDate)));
       const querySnapshot = await getDocs(q);
-      
+
       let totalRevenue = 0;
       let totalSoldProducts = 0;
-      
+
       querySnapshot.forEach((doc) => {
         const order = doc.data() as any;
         if (order.status === 'completed' && order.paymentConfirmed) {
@@ -70,11 +62,10 @@ const Reports = () => {
       setRevenue(totalRevenue);
       setSoldProducts(totalSoldProducts);
 
-      // التحقق من المنتجات ذات المخزون المنخفض
       const productsRef = collection(db, 'products');
       const productsSnapshot = await getDocs(productsRef);
       const lowStock: Product[] = [];
-      
+
       productsSnapshot.forEach((doc) => {
         const product = doc.data() as Product;
         if (product.stock <= 3) {
@@ -89,10 +80,7 @@ const Reports = () => {
   };
 
   const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('he-IL', {
-      style: 'currency',
-      currency: 'ILS'
-    }).format(amount);
+    return `₪${amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
   };
 
   return (

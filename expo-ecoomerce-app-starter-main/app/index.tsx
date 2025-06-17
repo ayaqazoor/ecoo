@@ -6,6 +6,7 @@ import { Colors } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeIn, FadeInDown, FadeInRight } from "react-native-reanimated";
 import SocialLoginButtons from "@/components/SocialLoginButtons";
+import { router } from 'expo-router';
 
 type Props = {};
 

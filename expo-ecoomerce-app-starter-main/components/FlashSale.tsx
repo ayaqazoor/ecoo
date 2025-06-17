@@ -12,7 +12,7 @@ const FlashSaleScreen = () => {
   const [products, setProducts] = useState<ProductType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState({
-    days: 0,
+    days: 2,
     hours: 0,
     minutes: 0,
     seconds: 0
@@ -20,9 +20,8 @@ const FlashSaleScreen = () => {
 
   useEffect(() => {
     loadFlashSaleProducts();
-    // Set end date to 9 days from now
     const endDate = new Date();
-    endDate.setDate(endDate.getDate() + 9);
+    endDate.setDate(endDate.getDate() + 2);
     
     const calculateTimeLeft = () => {
       const now = new Date();
@@ -38,12 +37,8 @@ const FlashSaleScreen = () => {
       }
     };
 
-    // Calculate immediately
     calculateTimeLeft();
-    
-    // Update every second
     const timer = setInterval(calculateTimeLeft, 1000);
-
     return () => clearInterval(timer);
   }, []);
 
@@ -120,7 +115,7 @@ const FlashSaleScreen = () => {
   }
 
   return (
-    <>
+    <View style={styles.mainContainer}>
       <Stack.Screen
         options={{
           headerTitle: 'Flash Sale',
@@ -151,43 +146,31 @@ const FlashSaleScreen = () => {
           headerShadowVisible: false,
         }}
       />
-      <SafeAreaView style={styles.container}>
-        <View style={styles.countdownContainer}>
-          <Text style={styles.countdownTitle}>Sale Ends In:</Text>
-          <View style={styles.countdownBoxes}>
-            <View style={styles.countdownBox}>
-              <Text style={styles.countdownNumber}>{String(timeLeft.days).padStart(2, '0')}</Text>
-              <Text style={styles.countdownLabel}>Days</Text>
-            </View>
-            <View style={styles.countdownBox}>
-              <Text style={styles.countdownNumber}>{String(timeLeft.hours).padStart(2, '0')}</Text>
-              <Text style={styles.countdownLabel}>Hours</Text>
-            </View>
-            <View style={styles.countdownBox}>
-              <Text style={styles.countdownNumber}>{String(timeLeft.minutes).padStart(2, '0')}</Text>
-              <Text style={styles.countdownLabel}>Mins</Text>
-            </View>
-            <View style={styles.countdownBox}>
-              <Text style={styles.countdownNumber}>{String(timeLeft.seconds).padStart(2, '0')}</Text>
-              <Text style={styles.countdownLabel}>Secs</Text>
-            </View>
-          </View>
+
+      <View style={styles.timerContainer}>
+        <Text style={styles.timerTitle}>Flash Sale Ends In:</Text>
+        <View style={styles.timerBox}>
+          <Text style={styles.timerText}>
+            {String(timeLeft.days).padStart(2, '0')} : {String(timeLeft.hours).padStart(2, '0')} : {String(timeLeft.minutes).padStart(2, '0')} : {String(timeLeft.seconds).padStart(2, '0')}
+          </Text>
+          <Text style={styles.timerLabels}>Days : Hours : Minutes : Seconds</Text>
         </View>
-        <FlatList
-          data={products}
-          renderItem={renderProductItem}
-          keyExtractor={(item) => item.id}
-          numColumns={2}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-        />
-      </SafeAreaView>
-    </>
+      </View>
+
+      <FlatList
+        data={products}
+        renderItem={renderProductItem}
+        keyExtractor={(item) => item.id}
+        numColumns={2}
+        contentContainerStyle={styles.listContainer}
+        showsVerticalScrollIndicator={false}
+      />
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  mainContainer: {
     flex: 1,
     backgroundColor: Colors.background,
   },
@@ -260,49 +243,43 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
     padding: 5,
   },
-  countdownContainer: {
-    backgroundColor: Colors.primary,
-    padding: 16,
+  timerContainer: {
+    backgroundColor: '#FF3B30',
+    padding: 20,
     alignItems: 'center',
-    width: '100%',
-    marginBottom: 8,
+    marginBottom: 10,
   },
-  countdownTitle: {
-    color: Colors.white,
-    fontSize: 16,
+  timerTitle: {
+    color: 'white',
+    fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 8,
-    textAlign: 'center',
+    marginBottom: 10,
   },
-  countdownBoxes: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-    width: '100%',
-  },
-  countdownBox: {
-    backgroundColor: Colors.white,
-    borderRadius: 8,
-    padding: 6,
-    minWidth: 60,
+  timerBox: {
+    backgroundColor: 'white',
+    padding: 15,
+    borderRadius: 10,
+    width: '90%',
     alignItems: 'center',
-    elevation: 3,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
+    elevation: 5,
   },
-  countdownNumber: {
-    fontSize: 20,
+  timerText: {
+    fontSize: 32,
     fontWeight: 'bold',
-    color: Colors.primary,
+    color: '#FF3B30',
+    marginBottom: 5,
   },
-  countdownLabel: {
-    fontSize: 12,
-    color: Colors.gray,
-    marginTop: 2,
-    textAlign: 'center',
+  timerLabels: {
+    fontSize: 14,
+    color: '#666',
   },
 });
 
-export default FlashSaleScreen;
+export default FlashSaleScreen; 

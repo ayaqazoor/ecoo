@@ -1,4 +1,3 @@
-
 import { StyleSheet, Text, View, FlatList, Image, ActivityIndicator, TouchableOpacity, TextInput } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import { router, Stack } from 'expo-router';
@@ -302,6 +301,10 @@ const HomeScreen = (props: Props) => {
     );
   };
 
+  const handleFaceRecognitionPress = () => {
+    router.push('/faceRecognition' as any);
+  };
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -484,7 +487,7 @@ const HomeScreen = (props: Props) => {
                     {currentCard === 'faceRecognition' ? 'Face Recognition' : 'Daily Routine'}
                   </Text>
                   <TouchableOpacity
-                    onPress={() => router.push(currentCard === 'faceRecognition' ? '/faceRecognition' : '../routine/TasksScreen')}
+                    onPress={handleFaceRecognitionPress}
                   >
                     <Text style={styles.seeAllText}>
                       {currentCard === 'faceRecognition' ? 'Try Now' : 'See All'}
@@ -494,7 +497,7 @@ const HomeScreen = (props: Props) => {
                 {currentCard === 'faceRecognition' ? (
                   <TouchableOpacity
                     style={[styles.routineCard, { backgroundColor: Colors.lightbeige }]}
-                    onPress={() => router.push('/faceRecognition')}
+                    onPress={handleFaceRecognitionPress}
                   >
                     <Image
                       source={require('@/assets/images/t2.jpg')}

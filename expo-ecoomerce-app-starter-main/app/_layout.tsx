@@ -35,7 +35,7 @@ export default function RootLayout() {
         <Stack.Screen name="OurPoliciesScreen" options={{ headerShown: false }} />
         <Stack.Screen name="ProductsManagement" options={{ headerShown: false }} />
         <Stack.Screen name="Reports" options={{ headerShown: false }} />
-
+        <Stack.Screen name="faceRecognition" options={{ headerShown: false }} />
       </Stack>
     </GestureHandlerRootView>
   );
